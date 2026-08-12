@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, Upload, Star, Check, X, Trash2, Loader2, Filter } from "lucide-react";
+import { Send, Upload, Star, Check, X, Trash2, Loader2, Filter, Edit2, ShieldCheck, Crown, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +16,19 @@ interface TestimonialItem {
   status: "pending" | "approved" | "rejected";
   source: "magic_link" | "public_form" | "manual_import";
   isImportedSelfReported: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function TestimonialsModerationPage() {
   const [items, setItems] = useState<TestimonialItem[]>([]);
   const [widgetsList, setWidgetsList] = useState<Array<{ id: string; name: string }>>([]);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [filter, setFilter] = useState<"pending" | "all" | "approved" | "rejected">("pending");
   const [loadingItems, setLoadingItems] = useState(true);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editAuthorName, setEditAuthorName] = useState("");
 
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -44,7 +51,6 @@ export default function TestimonialsModerationPage() {
   const fetchInitialData = async () => {
     setLoadingItems(true);
     try {
-      // Fetch creator widgets
       const widgetsRes = await fetch("/api/widgets");
       const widgetsData = await widgetsRes.json();
       if (widgetsData.widgets) {
@@ -55,7 +61,6 @@ export default function TestimonialsModerationPage() {
         }
       }
 
-      // Fetch creator testimonials
       const testimonialsRes = await fetch("/api/testimonials");
       const testimonialsData = await testimonialsRes.json();
       if (testimonialsData.testimonials) {
@@ -169,6 +174,28 @@ export default function TestimonialsModerationPage() {
     }
   };
 
+  const handleInlineSave = async (id: string) => {
+    try {
+      const res = await fetch("/api/testimonials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "approved", content: editContent, authorName: editAuthorName }),
+      });
+      if (res.ok) {
+        setItems(
+          items.map((item) =>
+            item.id === id ? { ...item, content: editContent, authorName: editAuthorName, status: "approved" } : item
+          )
+        );
+        setEditingId(null);
+      } else {
+        alert("Failed to save changes.");
+      }
+    } catch {
+      alert("Network error.");
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this testimonial?")) return;
 
@@ -186,167 +213,281 @@ export default function TestimonialsModerationPage() {
     }
   };
 
+  const renderSourceBadge = (item: TestimonialItem) => {
+    if (item.source === "magic_link") {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-ink-900 text-surface-white">
+          <ShieldCheck className="w-3 h-3" />
+          <span>Verified & Approved</span>
+        </span>
+      );
+    }
+    if (item.source === "public_form") {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-ink-800 text-ink-900">
+          <span>Verified Direct Submission</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-surface-light border border-ink-800/20 text-ink-800">
+        <span>Self-Reported / Imported</span>
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-8 font-sans">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Header & Ingestion Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink-900/10 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Testimonials Moderation</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Approve, reject, or request single-click magic link testimonials.
+          <h1 className="font-display text-3xl font-bold text-ink-900">Approval Queue</h1>
+          <p className="text-ink-800/70 text-sm mt-1">
+            Moderation tool for reviewing, approving, or tweaking client testimonials.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div id="channels" className="flex items-center gap-3">
           <button
             onClick={() => setShowMagicModal(true)}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"
+            className="inline-flex items-center gap-2 bg-ink-900 hover:bg-ink-800 text-surface-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm transition"
           >
             <Send className="w-4 h-4" />
-            <span>Send Magic Link</span>
+            <span>Request Magic Link</span>
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"
+            className="inline-flex items-center gap-2 bg-surface-white hover:bg-surface-light text-ink-900 border border-ink-800 text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm transition"
           >
             <Upload className="w-4 h-4" />
-            <span>Import Screenshot</span>
+            <span>Import Praise</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-        <Filter className="w-4 h-4 text-slate-400 mr-2" />
-        {(["all", "pending", "approved", "rejected"] as const).map((tab) => (
+      {/* Filter Tabs & Pro Bulk Actions Nudge */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-white p-4 rounded-2xl border border-ink-900/10">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-ink-800/50 mr-1" />
+          {(["pending", "all", "approved", "rejected"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition ${
+                filter === tab
+                  ? "bg-ink-900 text-surface-white shadow-sm"
+                  : "text-ink-800/70 hover:bg-surface-light"
+              }`}
+            >
+              {tab === "pending" ? "Pending Queue" : tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Pro Tier Bulk Approval Nudge */}
+        <div className="flex items-center gap-2 text-xs">
           <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition ${
-              filter === tab
-                ? "bg-indigo-600 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
+            onClick={() => alert("Bulk Moderation is a Pro-tier feature. Upgrade to Pro to enable 1-click batch approvals!")}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-light text-ink-800/70 border border-ink-800/10 hover:border-ink-800 transition font-medium"
           >
-            {tab}
+            <Crown className="w-3.5 h-3.5 text-ink-900" />
+            <span>Bulk Select & Approve</span>
+            <span className="text-[10px] font-mono uppercase bg-ink-900 text-surface-white px-1.5 py-0.5 rounded">
+              Pro
+            </span>
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* Testimonials Grid */}
+      {/* Testimonials Queue */}
       {loadingItems ? (
-        <div className="py-12 flex items-center justify-center text-indigo-600 text-sm font-medium gap-2">
+        <div className="py-16 flex items-center justify-center text-ink-900 text-sm font-medium gap-3">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading your testimonials...</span>
+          <span>Loading queue...</span>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
-          <p className="text-slate-500 text-sm italic">No testimonials found for this view.</p>
-          <p className="text-xs text-slate-400">
-            Click "Send Magic Link" or "Import Screenshot" above to get started.
+        <div className="bg-surface-white p-16 rounded-3xl border border-ink-900/10 text-center space-y-3">
+          <p className="text-ink-800/60 text-sm italic">No items matching current view.</p>
+          <p className="text-xs text-ink-800/40">
+            Use "Request Magic Link" or "Import Praise" above to populate your moderation queue.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredItems.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900">{item.authorName}</h3>
-                  {item.authorTitle && <p className="text-xs text-slate-500">{item.authorTitle}</p>}
+        <div className="space-y-4">
+          <AnimatePresence mode="popLayout">
+            {filteredItems.map((item) => (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25 } }}
+                className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-sm space-y-4 transition hover:border-ink-900/20"
+              >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink-900/5 pb-3">
+                <div className="flex items-center gap-3">
+                  {editingId === item.id ? (
+                    <input
+                      type="text"
+                      value={editAuthorName}
+                      onChange={(e) => setEditAuthorName(e.target.value)}
+                      className="px-2 py-1 text-sm font-bold border border-ink-800 rounded"
+                    />
+                  ) : (
+                    <div>
+                      <h3 className="font-display font-bold text-ink-900 text-base">
+                        {item.authorName}
+                      </h3>
+                      {item.authorTitle && (
+                        <p className="text-xs text-ink-800/60">{item.authorTitle}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {renderSourceBadge(item)}
+
                   <span
-                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
                       item.status === "approved"
-                        ? "bg-emerald-100 text-emerald-800"
+                        ? "bg-ink-900 text-surface-white"
                         : item.status === "pending"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-rose-100 text-rose-800"
+                        ? "border border-ink-800 text-ink-900"
+                        : "bg-surface-light text-ink-800/60"
                     }`}
                   >
                     {item.status}
                   </span>
-
-                  {item.isImportedSelfReported && (
-                    <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded">
-                      [Self-Reported / Imported]
-                    </span>
-                  )}
                 </div>
               </div>
 
+              {/* Rating */}
               {item.rating && (
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
                       className={`w-4 h-4 ${
-                        i < (item.rating || 0) ? "fill-amber-400 text-amber-400" : "text-slate-200"
+                        i < (item.rating || 0)
+                          ? "fill-ink-900 text-ink-900"
+                          : "text-ink-900/20"
                       }`}
                     />
                   ))}
                 </div>
               )}
 
-              <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                "{item.content}"
-              </p>
+              {/* Content Body (Inline Editable) */}
+              {editingId === item.id ? (
+                <div className="space-y-2">
+                  <textarea
+                    rows={3}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="w-full p-3 text-sm border border-ink-800 rounded-xl focus:outline-none"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="px-3 py-1 text-xs text-ink-800/70 hover:bg-surface-light rounded"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleInlineSave(item.id)}
+                      className="px-3 py-1 text-xs font-semibold bg-ink-900 text-surface-white rounded"
+                    >
+                      Save & Approve
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-ink-900 leading-relaxed bg-surface-light p-4 rounded-xl border border-ink-900/5 italic">
+                  "{item.content}"
+                </p>
+              )}
 
-              {/* Moderation Controls */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-2">
+              {/* Footer: Last Verified Timestamp + Action Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-2 text-xs">
+                <div className="flex items-center gap-1 text-ink-800/50 font-mono text-[11px]">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>
+                    Last Verified:{" "}
+                    {new Date(item.updatedAt || item.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {editingId !== item.id && (
+                    <button
+                      onClick={() => {
+                        setEditingId(item.id);
+                        setEditContent(item.content);
+                        setEditAuthorName(item.authorName);
+                      }}
+                      className="inline-flex items-center gap-1 text-ink-800/70 hover:text-ink-900 transition"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+
                   {item.status !== "approved" && (
                     <button
                       onClick={() => handleStatusChange(item.id, "approved")}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-semibold rounded-lg shadow-sm transition"
                     >
                       <Check className="w-3.5 h-3.5" />
                       <span>Approve</span>
                     </button>
                   )}
+
                   {item.status !== "rejected" && (
                     <button
                       onClick={() => handleStatusChange(item.id, "rejected")}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 px-2.5 py-1 rounded"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-light hover:bg-ink-900/10 text-ink-900 border border-ink-900/20 font-medium rounded-lg transition"
                     >
                       <X className="w-3.5 h-3.5" />
                       <span>Reject</span>
                     </button>
                   )}
-                </div>
 
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  className="text-slate-400 hover:text-rose-600 transition"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-1.5 text-ink-800/40 hover:text-ink-900 transition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
+    )}
 
       {/* Magic Link Modal */}
       {showMagicModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Send className="w-5 h-5 text-indigo-600" />
+        <div className="fixed inset-0 bg-ink-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-up">
+          <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-2xl border border-ink-900/10 space-y-6">
+            <h2 className="font-display text-xl font-bold text-ink-900 flex items-center gap-2">
+              <Send className="w-5 h-5" />
               <span>Send Magic Link Request</span>
             </h2>
 
             <form onSubmit={handleSendMagicLink} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Target Widget
                 </label>
                 <select
                   value={magicWidgetId}
                   onChange={(e) => setMagicWidgetId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 >
                   {widgetsList.map((w) => (
@@ -358,7 +499,7 @@ export default function TestimonialsModerationPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Client Email
                 </label>
                 <input
@@ -366,13 +507,13 @@ export default function TestimonialsModerationPage() {
                   value={magicEmail}
                   onChange={(e) => setMagicEmail(e.target.value)}
                   placeholder="client@company.com"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Client Name
                 </label>
                 <input
@@ -380,13 +521,13 @@ export default function TestimonialsModerationPage() {
                   value={magicName}
                   onChange={(e) => setMagicName(e.target.value)}
                   placeholder="John Smith"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Draft Testimonial Content
                 </label>
                 <textarea
@@ -394,7 +535,7 @@ export default function TestimonialsModerationPage() {
                   value={magicContent}
                   onChange={(e) => setMagicContent(e.target.value)}
                   placeholder="Draft testimonial for client to review..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 />
               </div>
@@ -403,16 +544,16 @@ export default function TestimonialsModerationPage() {
                 <button
                   type="button"
                   onClick={() => setShowMagicModal(false)}
-                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-medium text-ink-800/70 hover:bg-surface-light rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm disabled:opacity-50"
+                  className="px-5 py-2 text-xs font-semibold text-surface-white bg-ink-900 hover:bg-ink-800 rounded-xl shadow-sm disabled:opacity-50"
                 >
-                  {submitting ? "Sending..." : "Send Link"}
+                  {submitting ? "Sending..." : "Send Magic Link"}
                 </button>
               </div>
             </form>
@@ -422,22 +563,22 @@ export default function TestimonialsModerationPage() {
 
       {/* Manual Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-amber-600" />
-              <span>Import Offline Testimonial</span>
+        <div className="fixed inset-0 bg-ink-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-up">
+          <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-2xl border border-ink-900/10 space-y-6">
+            <h2 className="font-display text-xl font-bold text-ink-900 flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              <span>Import Offline Praise</span>
             </h2>
 
             <form onSubmit={handleManualImport} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Target Widget
                 </label>
                 <select
                   value={importWidgetId}
                   onChange={(e) => setImportWidgetId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 >
                   {widgetsList.map((w) => (
@@ -449,7 +590,7 @@ export default function TestimonialsModerationPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Author Name
                 </label>
                 <input
@@ -457,13 +598,13 @@ export default function TestimonialsModerationPage() {
                   value={importName}
                   onChange={(e) => setImportName(e.target.value)}
                   placeholder="Jane Doe"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Author Title
                 </label>
                 <input
@@ -471,26 +612,26 @@ export default function TestimonialsModerationPage() {
                   value={importTitle}
                   onChange={(e) => setImportTitle(e.target.value)}
                   placeholder="VP of Growth"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                   Content
                 </label>
                 <textarea
                   rows={3}
                   value={importContent}
                   onChange={(e) => setImportContent(e.target.value)}
-                  placeholder="Copy Slack/Email content here..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  placeholder="Copy Slack/Email praise here..."
+                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
                   required
                 />
               </div>
 
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
-                Notice: All manual imports are permanently tagged with the hardcoded trust badge:{" "}
+              <div className="p-3 bg-surface-light rounded-xl border border-ink-900/10 text-xs text-ink-800">
+                Notice: All manual imports are permanently tagged with the trust badge:{" "}
                 <strong>[Self-Reported / Imported]</strong>.
               </div>
 
@@ -498,16 +639,16 @@ export default function TestimonialsModerationPage() {
                 <button
                   type="button"
                   onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-medium text-ink-800/70 hover:bg-surface-light rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-sm disabled:opacity-50"
+                  className="px-5 py-2 text-xs font-semibold text-surface-white bg-ink-900 hover:bg-ink-800 rounded-xl shadow-sm disabled:opacity-50"
                 >
-                  {submitting ? "Importing..." : "Import Testimonial"}
+                  {submitting ? "Importing..." : "Import Praise"}
                 </button>
               </div>
             </form>

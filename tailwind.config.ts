@@ -9,11 +9,19 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        "ink-900": "#2D2D2D",
+        "ink-800": "#33363B",
+        "surface-light": "#EFF3F6",
+        "surface-white": "#FFFFFF",
+      },
       fontFamily: {
-        sans: ["var(--font-sans)", "Inter", "sans-serif"],
+        display: ["var(--font-syne)", "sans-serif"],
+        sans: ["var(--font-manrope)", "sans-serif"],
       },
     },
   },
   plugins: [],
 };
 export default config;
+

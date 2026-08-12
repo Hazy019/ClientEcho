@@ -4,5 +4,8 @@ import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/clientecho";
 
-const client = postgres(connectionString, { max: 1 });
+const client = postgres(connectionString, { 
+  max: 1,
+  prepare: false, // Required for Supabase Transaction Pooler (PgBouncer)
+});
 export const db = drizzle(client, { schema });

@@ -1,4 +1,9 @@
-import DOMPurify from "isomorphic-dompurify";
+import createDOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
+
+const windowInstance = new JSDOM("<!DOCTYPE html><html><body></body></html>").window;
+const DOMPurify = createDOMPurify(windowInstance as any);
+
 
 /**
  * Server-side HTML sanitizer applied AFTER Zod validation.
@@ -22,3 +27,4 @@ export function sanitizePlainText(input: string): string {
     ALLOWED_ATTR: [],
   }).trim();
 }
+

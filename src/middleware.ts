@@ -33,18 +33,27 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // 1. Protected Creator Routes (Requires authenticated user)
+  const role = user?.app_metadata?.role;
+
+  // 1. Protected Creator Routes (Requires authenticated creator, Tech Admin is forbidden)
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/widgets") ||
     pathname.startsWith("/testimonials");
 
-  if (isProtectedRoute && !user) {
-    // If user is NOT logged in and tries to access dashboard, REDIRECT TO LOGIN (No backdoor allowed!)
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(url);
+  if (isProtectedRoute) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("redirectTo", pathname);
+      return NextResponse.redirect(url);
+    }
+    // Tech Admin MUST NEVER land on or view creator dashboard surfaces
+    if (role === "tech_admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      return NextResponse.redirect(url);
+    }
   }
 
   // 2. Tech Admin Route (Requires authenticated user with app_metadata.role = 'tech_admin')
@@ -54,7 +63,6 @@ export async function middleware(request: NextRequest) {
       url.pathname = "/login";
       return NextResponse.redirect(url);
     }
-    const role = user.app_metadata?.role;
     if (role !== "tech_admin") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
@@ -62,11 +70,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 3. Auth Routes (If user is ALREADY logged in, redirect away from /login or /signup to /dashboard)
+  // 3. Auth Routes (If user is ALREADY logged in, redirect to respective role dashboard immediately)
   const isAuthRoute = pathname === "/login" || pathname === "/signup";
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = role === "tech_admin" ? "/admin" : "/dashboard";
     return NextResponse.redirect(url);
   }
 

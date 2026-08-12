@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { widgets, testimonials } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { MessageSquare, Sparkles, Plus, Send, Upload, ShieldCheck, Clock } from "lucide-react";
+import { CheckSquare, Sparkles, Send, Upload, Clock, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -47,27 +47,27 @@ export default async function DashboardOverviewPage() {
   return (
     <div className="space-y-8 font-sans">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 p-6 md:p-8 rounded-2xl text-white shadow-lg">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Welcome to ClientEcho</h1>
-          <p className="text-indigo-200 text-sm mt-1">
-            Zero-friction client testimonials for freelancers & small agencies.
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-ink-900 p-8 rounded-3xl text-surface-white shadow-md border border-ink-800">
+        <div className="space-y-1">
+          <h1 className="font-display text-3xl font-bold">Workspace Overview & Analytics</h1>
+          <p className="text-surface-white/70 text-sm">
+            Zero-friction client testimonial engine for freelancers & agencies.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link
             href="/testimonials"
-            className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm px-4 py-2.5 rounded-lg shadow transition"
+            className="inline-flex items-center gap-2 bg-surface-white text-ink-900 hover:bg-surface-light font-display font-semibold text-xs px-5 py-3 rounded-xl transition shadow-sm"
           >
             <Send className="w-4 h-4" />
-            <span>Request Magic Link</span>
+            <span>Open Approval Queue</span>
           </Link>
           <Link
             href="/widgets"
-            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-4 py-2.5 rounded-lg border border-white/20 backdrop-blur-sm transition"
+            className="inline-flex items-center gap-2 bg-ink-800 text-surface-white hover:bg-surface-white/10 font-display font-semibold text-xs px-5 py-3 rounded-xl border border-surface-white/20 transition"
           >
-            <Plus className="w-4 h-4" />
+            <Sparkles className="w-4 h-4" />
             <span>New Widget</span>
           </Link>
         </div>
@@ -75,32 +75,32 @@ export default async function DashboardOverviewPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Widgets</div>
-            <div className="text-3xl font-bold text-slate-900 mt-2">{activeWidgetsCount}</div>
+            <div className="text-xs font-mono font-semibold text-ink-800/60 uppercase tracking-wider">Active Widgets</div>
+            <div className="font-display text-3xl font-bold text-ink-900 mt-2">{activeWidgetsCount}</div>
           </div>
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-ink-900 text-surface-white rounded-2xl flex items-center justify-center">
             <Sparkles className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved Testimonials</div>
-            <div className="text-3xl font-bold text-slate-900 mt-2">{approvedTestimonialsCount}</div>
+            <div className="text-xs font-mono font-semibold text-ink-800/60 uppercase tracking-wider">Approved Testimonials</div>
+            <div className="font-display text-3xl font-bold text-ink-900 mt-2">{approvedTestimonialsCount}</div>
           </div>
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-            <MessageSquare className="w-6 h-6" />
+          <div className="w-12 h-12 bg-ink-900 text-surface-white rounded-2xl flex items-center justify-center">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending Moderation</div>
-            <div className="text-3xl font-bold text-slate-900 mt-2">{pendingTestimonialsCount}</div>
+            <div className="text-xs font-mono font-semibold text-ink-800/60 uppercase tracking-wider">Pending Moderation</div>
+            <div className="font-display text-3xl font-bold text-ink-900 mt-2">{pendingTestimonialsCount}</div>
           </div>
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-surface-light border border-ink-800/20 text-ink-900 rounded-2xl flex items-center justify-center">
             <Clock className="w-6 h-6" />
           </div>
         </div>
@@ -108,33 +108,33 @@ export default async function DashboardOverviewPage() {
 
       {/* Quick Action Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Send className="w-5 h-5 text-indigo-600" />
-            <span>Magic Link Flow (Draft & Approve)</span>
+        <div className="bg-surface-white p-8 rounded-3xl border border-ink-900/10 shadow-sm space-y-4">
+          <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
+            <Send className="w-5 h-5 text-ink-900" />
+            <span>Magic Link Approval Pipeline</span>
           </h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
+          <p className="text-sm text-ink-800/80 leading-relaxed">
             Send a single-use cryptographically hashed link to your client. They can review, tweak, and approve the testimonial with 1-click.
           </p>
           <Link
             href="/testimonials"
-            className="inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            className="inline-block text-xs font-display font-bold text-ink-900 hover:underline pt-2"
           >
-            Manage Testimonials &rarr;
+            Manage Approval Queue &rarr;
           </Link>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Upload className="w-5 h-5 text-amber-600" />
-            <span>Manual Offline Screenshot Import</span>
+        <div className="bg-surface-white p-8 rounded-3xl border border-ink-900/10 shadow-sm space-y-4">
+          <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
+            <Upload className="w-5 h-5 text-ink-900" />
+            <span>Manual Praise Import</span>
           </h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Import Slack messages, tweets, or email screenshots. Automatically tagged with the hardcoded trust badge: <code className="bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded text-xs border border-amber-200">[Self-Reported / Imported]</code>.
+          <p className="text-sm text-ink-800/80 leading-relaxed">
+            Import Slack messages, tweets, or email screenshots. Automatically tagged with the hardcoded trust badge: <code className="bg-surface-light text-ink-900 px-1.5 py-0.5 rounded text-xs font-mono border border-ink-800/20">[Self-Reported / Imported]</code>.
           </p>
           <Link
             href="/testimonials"
-            className="inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            className="inline-block text-xs font-display font-bold text-ink-900 hover:underline pt-2"
           >
             Import Testimonial &rarr;
           </Link>
@@ -143,3 +143,4 @@ export default async function DashboardOverviewPage() {
     </div>
   );
 }
+

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, AlertCircle, Clock, Star, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle, AlertCircle, Clock, Star, Loader2, Edit2, ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ function ApproveTestimonialContent() {
     testimonial?: any;
   }>({ valid: false });
 
+  const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -49,8 +51,8 @@ function ApproveTestimonialContent() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleSubmitApproval = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitApproval = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!token) return;
 
     setSubmitting(true);
@@ -82,165 +84,213 @@ function ApproveTestimonialContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="flex items-center gap-3 text-indigo-600 font-medium">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Verifying magic link token...</span>
+      <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
+        <div className="flex items-center gap-3 text-ink-900 font-medium text-sm">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>Verifying secure approval token...</span>
         </div>
       </div>
     );
   }
 
+  // State: Token already used
   if (!validState.valid && validState.reason === "already_approved") {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
-          <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-6 h-6" />
+      <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
+        <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-ink-900/10 text-center space-y-4 animate-fade-in-up">
+          <div className="w-14 h-14 bg-ink-900 text-surface-white rounded-full flex items-center justify-center mx-auto mb-2">
+            <CheckCircle className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Already Approved!</h1>
-          <p className="text-slate-600 text-sm leading-relaxed">
+          <h1 className="font-display text-2xl font-bold text-ink-900">Already Confirmed!</h1>
+          <p className="text-ink-800/70 text-sm leading-relaxed">
             Thank you! This testimonial draft has already been verified and published. No further action is needed.
           </p>
+          <div className="pt-2 text-xs font-mono text-ink-800/40 uppercase tracking-widest">
+            ClientEcho Verification Seal
+          </div>
         </div>
       </div>
     );
   }
 
+  // State: Token expired
   if (!validState.valid && validState.reason === "expired") {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
-          <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Clock className="w-6 h-6" />
+      <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
+        <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-ink-900/10 text-center space-y-4 animate-fade-in-up">
+          <div className="w-14 h-14 bg-surface-light text-ink-900 border border-ink-800/20 rounded-full flex items-center justify-center mx-auto mb-2">
+            <Clock className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Link Expired</h1>
-          <p className="text-slate-600 text-sm leading-relaxed">
-            This magic link has expired for security reasons. Please ask the creator to send a new testimonial request.
+          <h1 className="font-display text-2xl font-bold text-ink-900">Link Expired</h1>
+          <p className="text-ink-800/70 text-sm leading-relaxed">
+            This magic approval link has expired for security reasons. Please contact the creator to issue a new verification link.
           </p>
         </div>
       </div>
     );
   }
 
+  // State: Invalid token
   if (!validState.valid) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
-          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-6 h-6" />
+      <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
+        <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-ink-900/10 text-center space-y-4 animate-fade-in-up">
+          <div className="w-14 h-14 bg-surface-light text-ink-900 border border-ink-800/20 rounded-full flex items-center justify-center mx-auto mb-2">
+            <AlertCircle className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Invalid Link</h1>
-          <p className="text-slate-600 text-sm leading-relaxed">
-            We couldn't verify this magic link token. Please check the URL in your email or contact support.
+          <h1 className="font-display text-2xl font-bold text-ink-900">Invalid Link</h1>
+          <p className="text-ink-800/70 text-sm leading-relaxed">
+            We couldn't verify this magic link token. Please check the link URL from your email or request a new one.
           </p>
         </div>
       </div>
     );
   }
 
+  // State: Post-Submit Success State
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
-          <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-6 h-6" />
+      <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
+        <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-ink-900/10 text-center space-y-4 animate-fade-in-up">
+          <div className="w-14 h-14 bg-ink-900 text-surface-white rounded-full flex items-center justify-center mx-auto mb-2">
+            <CheckCircle className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Testimonial Published!</h1>
-          <p className="text-slate-600 text-sm leading-relaxed mb-4">
-            Your review has been successfully approved and published. Thank you for your feedback!
+          <h1 className="font-display text-2xl font-bold text-ink-900">Testimonial Published!</h1>
+          <p className="text-ink-800/70 text-sm leading-relaxed">
+            Thank you! Your testimonial has been verified with 1-click and published to the live widget.
           </p>
+          <div className="pt-2 flex items-center justify-center gap-1.5 text-xs font-mono text-ink-900 font-semibold">
+            <ShieldCheck className="w-4 h-4 text-ink-900" />
+            <span>Verified & Approved</span>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white max-w-lg w-full p-8 rounded-2xl shadow-sm border border-slate-200">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Review & Approve Testimonial</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Please verify or refine your testimonial below.
+    <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
+      <div className="bg-surface-white max-w-lg w-full p-8 rounded-3xl shadow-xl border border-ink-900/10 space-y-6 animate-fade-in-up">
+        {/* Creator Context Header */}
+        <div className="text-center space-y-2 border-b border-ink-900/10 pb-6">
+          <div className="w-10 h-10 bg-ink-900 text-surface-white rounded-xl flex items-center justify-center mx-auto p-1.5 mb-2">
+            <Image
+              src="/ClientEcho_logo.png"
+              alt="ClientEcho Logo"
+              width={28}
+              height={28}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <h1 className="font-display text-2xl font-bold text-ink-900">
+            Confirm Your Testimonial
+          </h1>
+          <p className="text-ink-800/70 text-xs leading-relaxed max-w-sm mx-auto">
+            Please review the draft testimonial below and confirm with 1-click.
           </p>
         </div>
 
-        <form onSubmit={handleSubmitApproval} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Your Name
-            </label>
-            <input
-              type="text"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              required
-            />
+        {/* Testimonial Review Form */}
+        <form onSubmit={handleSubmitApproval} className="space-y-6">
+          {/* Rating */}
+          <div className="flex items-center justify-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                type="button"
+                key={star}
+                disabled={!isEditing}
+                onClick={() => setRating(star)}
+                className="p-1 focus:outline-none disabled:cursor-default"
+              >
+                <Star
+                  className={`w-6 h-6 ${
+                    star <= rating ? "fill-ink-900 text-ink-900" : "text-ink-900/20"
+                  }`}
+                />
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Title / Company (Optional)
-            </label>
-            <input
-              type="text"
-              value={authorTitle}
-              placeholder="e.g. Founder at Acme Inc"
-              onChange={(e) => setAuthorTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
-          </div>
+          {/* Testimonial Quote Box */}
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                  required
+                />
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Rating
-            </label>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  type="button"
-                  key={star}
-                  onClick={() => setRating(star)}
-                  className="p-1 focus:outline-none"
-                >
-                  <Star
-                    className={`w-6 h-6 ${
-                      star <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300"
-                    }`}
-                  />
-                </button>
-              ))}
+              <div>
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                  Title / Company (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={authorTitle}
+                  placeholder="e.g. Founder at Acme Inc"
+                  onChange={(e) => setAuthorTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                  Testimonial Copy
+                </label>
+                <textarea
+                  rows={4}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                  required
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-surface-light p-6 rounded-2xl border border-ink-900/10 space-y-3 text-center">
+              <p className="text-sm text-ink-900 italic leading-relaxed">
+                "{content}"
+              </p>
+              <div className="text-xs font-display font-bold text-ink-900 pt-1">
+                — {authorName} {authorTitle && <span className="font-normal text-ink-800/60">({authorTitle})</span>}
+              </div>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Testimonial Content
-            </label>
-            <textarea
-              rows={4}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              required
-            />
-          </div>
+          {/* Primary Action Button (1-Click Approve) */}
+          <div className="space-y-3 pt-2 text-center">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-4 bg-ink-900 hover:bg-ink-800 text-surface-white font-display font-semibold rounded-2xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Publishing Testimonial...</span>
+                </>
+              ) : (
+                <span>Approve & Publish Testimonial</span>
+              )}
+            </button>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-sm shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Publishing...</span>
-              </>
-            ) : (
-              <span>Approve & Publish Testimonial</span>
-            )}
-          </button>
+            {/* Smaller "Suggest an edit" Link */}
+            <button
+              type="button"
+              onClick={() => setIsEditing(!isEditing)}
+              className="inline-flex items-center gap-1.5 text-xs text-ink-800/70 hover:text-ink-900 font-medium transition"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              <span>{isEditing ? "Done tweaking draft" : "Suggest an edit to this draft"}</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -251,11 +301,8 @@ export default function ApproveTestimonialPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-          <div className="flex items-center gap-3 text-indigo-600 font-medium">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span>Loading page...</span>
-          </div>
+        <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 text-ink-900 font-sans">
+          <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       }
     >

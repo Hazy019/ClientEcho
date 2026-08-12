@@ -2,8 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ink-900: #2D2D2D;
+  --ink-800: #33363B;
+  --surface-light: #EFF3F6;
+  --surface-white: #FFFFFF;
+}
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    @apply bg-surface-white text-ink-900 font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    @apply font-display;
   }
 }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger delay utilities */
+.delay-1 { animation-delay: 80ms; }
+.delay-2 { animation-delay: 160ms; }
+.delay-3 { animation-delay: 240ms; }
+.delay-4 { animation-delay: 320ms; }
+

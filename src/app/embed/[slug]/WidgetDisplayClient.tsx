@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Star } from "lucide-react";
+import { Star, ShieldCheck } from "lucide-react";
 
 interface Testimonial {
   id: string;
@@ -11,6 +11,7 @@ interface Testimonial {
   content: string;
   rating?: number | null;
   videoUrl?: string | null;
+  source?: "magic_link" | "public_form" | "manual_import";
   isImportedSelfReported: boolean;
 }
 
@@ -31,9 +32,9 @@ export default function WidgetDisplayClient({
   const containerRef = useRef<HTMLDivElement>(null);
   const theme = (widget.themeConfig as Record<string, any>) || {};
 
-  const primaryColor = theme.primaryColor || "#4f46e5";
-  const backgroundColor = theme.backgroundColor || "#ffffff";
-  const textColor = theme.textColor || "#111827";
+  const primaryColor = theme.primaryColor || "#2D2D2D";
+  const backgroundColor = theme.backgroundColor || "#FFFFFF";
+  const textColor = theme.textColor || "#2D2D2D";
   const cardStyle = theme.cardStyle || "border"; // "minimal", "border", "glass"
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function WidgetDisplayClient({
         const height = containerRef.current.getBoundingClientRect().height + 24;
         window.parent.postMessage(
           { type: "clientecho-resize", height },
-          "*" // Parent origin check is enforced on receiving parent script side
+          "*"
         );
       }
     };
@@ -62,7 +63,7 @@ export default function WidgetDisplayClient({
       className="p-4 font-sans antialiased text-sm leading-relaxed"
     >
       {testimonials.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 italic">
+        <div className="text-center py-8 text-ink-800/50 italic">
           No testimonials to display yet.
         </div>
       ) : (
@@ -70,24 +71,24 @@ export default function WidgetDisplayClient({
           {testimonials.map((item) => (
             <div
               key={item.id}
-              className={`p-4 rounded-xl transition-all duration-200 ${
+              className={`p-5 rounded-2xl transition-all duration-200 ${
                 cardStyle === "glass"
-                  ? "bg-white/70 backdrop-blur-md shadow-sm border border-white/20"
+                  ? "bg-surface-white/70 backdrop-blur-md shadow-sm border border-surface-white"
                   : cardStyle === "border"
-                  ? "border border-gray-200 bg-white shadow-sm"
-                  : "bg-gray-50"
+                  ? "border border-ink-900/10 bg-surface-white shadow-sm"
+                  : "bg-surface-light"
               }`}
             >
               {/* Rating Stars */}
               {item.rating && (
-                <div className="flex items-center gap-1 mb-2">
+                <div className="flex items-center gap-1 mb-2.5">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
                       className={`w-4 h-4 ${
                         i < (item.rating || 0)
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-gray-300"
+                          ? "fill-ink-900 text-ink-900"
+                          : "text-ink-900/20"
                       }`}
                     />
                   ))}
@@ -95,25 +96,27 @@ export default function WidgetDisplayClient({
               )}
 
               {/* Content */}
-              <p className="mb-3 whitespace-pre-line text-gray-800">{item.content}</p>
+              <p className="mb-4 whitespace-pre-line text-ink-900 leading-relaxed font-sans">
+                "{item.content}"
+              </p>
 
               {/* Video Embed */}
               {item.videoUrl && (
-                <div className="mb-3 rounded-lg overflow-hidden border border-gray-200">
+                <div className="mb-3 rounded-xl overflow-hidden border border-ink-900/10">
                   <a
                     href={item.videoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium text-center transition"
+                    className="block p-2.5 bg-ink-900 hover:bg-ink-800 text-surface-white text-xs font-semibold text-center transition"
                   >
                     ▶ Watch Video Testimonial
                   </a>
                 </div>
               )}
 
-              {/* Author Info & Hardcoded Trust Badge */}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <div className="flex items-center gap-2">
+              {/* Author Info & Standardized Trust Badges */}
+              <div className="flex items-center justify-between pt-3 border-t border-ink-900/5">
+                <div className="flex items-center gap-2.5">
                   {item.authorAvatarUrl ? (
                     <img
                       src={item.authorAvatarUrl}
@@ -122,28 +125,37 @@ export default function WidgetDisplayClient({
                     />
                   ) : (
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white"
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-surface-white"
                       style={{ backgroundColor: primaryColor }}
                     >
                       {item.authorName.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div>
-                    <div className="font-semibold text-gray-900 leading-none">
+                    <div className="font-display font-bold text-ink-900 text-xs">
                       {item.authorName}
                     </div>
                     {item.authorTitle && (
-                      <div className="text-xs text-gray-500 mt-0.5">
+                      <div className="text-[11px] text-ink-800/60 mt-0.5">
                         {item.authorTitle}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Hardcoded Trust Badge for Imported Testimonials */}
-                {item.isImportedSelfReported && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                {/* Standardized Trust Badges */}
+                {item.isImportedSelfReported || item.source === "manual_import" ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-light border border-ink-800/20 text-ink-800">
                     [Self-Reported / Imported]
+                  </span>
+                ) : item.source === "magic_link" ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-ink-900 text-surface-white">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Verified & Approved</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold border border-ink-800 text-ink-900">
+                    Verified Direct Submission
                   </span>
                 )}
               </div>
@@ -154,3 +166,4 @@ export default function WidgetDisplayClient({
     </div>
   );
 }
+

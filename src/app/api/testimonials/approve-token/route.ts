@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/db";
-import { magicLinkTokens, testimonials } from "@/db/schema";
+import { magicLinkTokens, testimonials, widgets } from "@/db/schema";
 import { hashMagicLinkToken } from "@/lib/tokens/magic-link";
 import { magicLinkApproveSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "@/lib/security/sanitizer";
+import { invalidateWidgetCache } from "@/lib/cache/redis";
 import { eq } from "drizzle-orm";
+
 
 // GET /api/testimonials/approve-token?token=... -> Validate token state
 export async function GET(req: Request) {
@@ -107,19 +109,39 @@ export async function POST(req: Request) {
     if (content) updateData.content = sanitizeHtml(content);
     if (rating !== undefined) updateData.rating = rating;
 
-    // Update testimonial to approved
-    await db
-      .update(testimonials)
-      .set(updateData)
-      .where(eq(testimonials.id, tokenRecord.testimonialId));
+    // Execute atomic transaction for status update + marking token used
+    const updatedTestimonial = await db.transaction(async (tx) => {
+      const [t] = await tx
+        .update(testimonials)
+        .set(updateData)
+        .where(eq(testimonials.id, tokenRecord.testimonialId))
+        .returning();
 
-    // Mark token as used
-    await db
-      .update(magicLinkTokens)
-      .set({ usedAt: new Date() })
-      .where(eq(magicLinkTokens.id, tokenRecord.id));
+      await tx
+        .update(magicLinkTokens)
+        .set({ usedAt: new Date() })
+        .where(eq(magicLinkTokens.id, tokenRecord.id));
+
+      return t;
+    });
+
+    // Invalidate Redis cache for associated widget
+    if (updatedTestimonial?.widgetId) {
+      try {
+        const [targetWidget] = await db
+          .select()
+          .from(widgets)
+          .where(eq(widgets.id, updatedTestimonial.widgetId));
+        if (targetWidget?.slug) {
+          await invalidateWidgetCache(targetWidget.slug);
+        }
+      } catch (cacheErr) {
+        console.error("Cache invalidation error:", cacheErr);
+      }
+    }
 
     return NextResponse.json({ success: true, message: "Testimonial approved successfully!" });
+
   } catch (error) {
     console.error("Token approval error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

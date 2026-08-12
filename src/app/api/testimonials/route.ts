@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
-import { testimonials } from "@/db/schema";
+import { testimonials, widgets } from "@/db/schema";
+import { invalidateWidgetCache } from "@/lib/cache/redis";
 import { eq, and } from "drizzle-orm";
+
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +60,18 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Testimonial not found or unauthorized" }, { status: 404 });
     }
 
+    // Invalidate Redis cache for associated widget
+    try {
+      const [targetWidget] = await db.select().from(widgets).where(eq(widgets.id, updated.widgetId));
+      if (targetWidget?.slug) {
+        await invalidateWidgetCache(targetWidget.slug);
+      }
+    } catch (cacheErr) {
+      console.error("Cache invalidation error:", cacheErr);
+    }
+
     return NextResponse.json({ success: true, testimonial: updated });
+
   } catch (error) {
     console.error("Update testimonial status error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
