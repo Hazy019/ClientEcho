@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { Send, Upload, Star, Check, X, Trash2, Loader2, Filter, Edit2, ShieldCheck, Crown, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { useToast } from "@/components/ui/Toast";
+import UpgradeModal from "@/components/ui/UpgradeModal";
+
 export const dynamic = "force-dynamic";
 
 interface TestimonialItem {
@@ -21,6 +24,9 @@ interface TestimonialItem {
 }
 
 export default function TestimonialsModerationPage() {
+  const { showToast } = useToast();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [items, setItems] = useState<TestimonialItem[]>([]);
   const [widgetsList, setWidgetsList] = useState<Array<{ id: string; name: string }>>([]);
   const [filter, setFilter] = useState<"pending" | "all" | "approved" | "rejected">("pending");
@@ -68,6 +74,7 @@ export default function TestimonialsModerationPage() {
       }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
+      showToast("Failed to load queue data.", "error");
     } finally {
       setLoadingItems(false);
     }
@@ -82,7 +89,7 @@ export default function TestimonialsModerationPage() {
   const handleSendMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!magicWidgetId) {
-      alert("Please create a widget first in the Widgets tab!");
+      showToast("Please create a widget first in the Widgets tab!", "info");
       return;
     }
 
@@ -102,17 +109,17 @@ export default function TestimonialsModerationPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("Magic link sent successfully!");
+        showToast("Magic link request sent to client!", "success");
         setShowMagicModal(false);
         setMagicEmail("");
         setMagicName("");
         setMagicContent("");
         fetchInitialData();
       } else {
-        alert(data.error || "Failed to send magic link.");
+        showToast(data.error || "Failed to send magic link.", "error");
       }
     } catch {
-      alert("Network error.");
+      showToast("Network error while sending magic link.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +128,7 @@ export default function TestimonialsModerationPage() {
   const handleManualImport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!importWidgetId) {
-      alert("Please create a widget first in the Widgets tab!");
+      showToast("Please create a widget first in the Widgets tab!", "info");
       return;
     }
 
@@ -141,17 +148,17 @@ export default function TestimonialsModerationPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("Testimonial imported!");
+        showToast("Offline praise successfully imported!", "success");
         setShowImportModal(false);
         setImportName("");
         setImportTitle("");
         setImportContent("");
         fetchInitialData();
       } else {
-        alert(data.error || "Import failed.");
+        showToast(data.error || "Import failed.", "error");
       }
     } catch {
-      alert("Network error.");
+      showToast("Network error while importing praise.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -166,11 +173,12 @@ export default function TestimonialsModerationPage() {
       });
       if (res.ok) {
         setItems(items.map((item) => (item.id === id ? { ...item, status: newStatus } : item)));
+        showToast(`Testimonial status updated to ${newStatus}.`, "success");
       } else {
-        alert("Failed to update status.");
+        showToast("Failed to update status.", "error");
       }
     } catch {
-      alert("Network error.");
+      showToast("Network error.", "error");
     }
   };
 
@@ -188,11 +196,12 @@ export default function TestimonialsModerationPage() {
           )
         );
         setEditingId(null);
+        showToast("Changes saved and testimonial approved!", "success");
       } else {
-        alert("Failed to save changes.");
+        showToast("Failed to save changes.", "error");
       }
     } catch {
-      alert("Network error.");
+      showToast("Network error.", "error");
     }
   };
 
@@ -205,11 +214,12 @@ export default function TestimonialsModerationPage() {
       });
       if (res.ok) {
         setItems(items.filter((item) => item.id !== id));
+        showToast("Testimonial deleted from queue.", "info");
       } else {
-        alert("Failed to delete testimonial.");
+        showToast("Failed to delete testimonial.", "error");
       }
     } catch {
-      alert("Network error.");
+      showToast("Network error.", "error");
     }
   };
 
@@ -287,7 +297,7 @@ export default function TestimonialsModerationPage() {
         {/* Pro Tier Bulk Approval Nudge */}
         <div className="flex items-center gap-2 text-xs">
           <button
-            onClick={() => alert("Bulk Moderation is a Pro-tier feature. Upgrade to Pro to enable 1-click batch approvals!")}
+            onClick={() => setShowUpgradeModal(true)}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-light text-ink-800/70 border border-ink-800/10 hover:border-ink-800 transition font-medium"
           >
             <Crown className="w-3.5 h-3.5 text-ink-900" />
@@ -471,190 +481,266 @@ export default function TestimonialsModerationPage() {
     )}
 
       {/* Magic Link Modal */}
-      {showMagicModal && (
-        <div className="fixed inset-0 bg-ink-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-up">
-          <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-2xl border border-ink-900/10 space-y-6">
-            <h2 className="font-display text-xl font-bold text-ink-900 flex items-center gap-2">
-              <Send className="w-5 h-5" />
-              <span>Send Magic Link Request</span>
-            </h2>
+      <AnimatePresence>
+        {showMagicModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            {/* Backdrop Fade */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setShowMagicModal(false)}
+              className="fixed inset-0 bg-ink-900/60 backdrop-blur-sm"
+            />
 
-            <form onSubmit={handleSendMagicLink} className="space-y-4">
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="relative bg-surface-white max-w-lg w-full p-6 sm:p-8 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-ink-900/10 space-y-6 max-h-[90vh] overflow-y-auto"
+            >
               <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Target Widget
-                </label>
-                <select
-                  value={magicWidgetId}
-                  onChange={(e) => setMagicWidgetId(e.target.value)}
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                >
-                  {widgetsList.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                <h2 className="font-display text-xl font-bold text-ink-900 flex items-center gap-2">
+                  <Send className="w-5 h-5 text-ink-900" />
+                  <span>Send Magic Link Request</span>
+                </h2>
+                <p className="text-xs text-ink-800/70 leading-relaxed mt-1">
+                  Your client will see this draft and can approve it in one click or suggest a small edit — no account needed on their end.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Client Email
-                </label>
-                <input
-                  type="email"
-                  value={magicEmail}
-                  onChange={(e) => setMagicEmail(e.target.value)}
-                  placeholder="client@company.com"
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                />
-              </div>
+              <form onSubmit={handleSendMagicLink} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                    Target Widget
+                  </label>
+                  <select
+                    value={magicWidgetId}
+                    onChange={(e) => setMagicWidgetId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900 bg-surface-white"
+                    required
+                  >
+                    {widgetsList.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Client Name
-                </label>
-                <input
-                  type="text"
-                  value={magicName}
-                  onChange={(e) => setMagicName(e.target.value)}
-                  placeholder="John Smith"
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                />
-              </div>
+                {/* 2-Column Row on Desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                      Client Email
+                    </label>
+                    <input
+                      type="email"
+                      value={magicEmail}
+                      onChange={(e) => setMagicEmail(e.target.value)}
+                      placeholder="client@company.com"
+                      className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                      required
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Draft Testimonial Content
-                </label>
-                <textarea
-                  rows={3}
-                  value={magicContent}
-                  onChange={(e) => setMagicContent(e.target.value)}
-                  placeholder="Draft testimonial for client to review..."
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                      Client Name
+                    </label>
+                    <input
+                      type="text"
+                      value={magicName}
+                      onChange={(e) => setMagicName(e.target.value)}
+                      placeholder="John Smith"
+                      className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                      required
+                    />
+                  </div>
+                </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowMagicModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-ink-800/70 hover:bg-surface-light rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 text-xs font-semibold text-surface-white bg-ink-900 hover:bg-ink-800 rounded-xl shadow-sm disabled:opacity-50"
-                >
-                  {submitting ? "Sending..." : "Send Magic Link"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                    Draft Testimonial Content
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={magicContent}
+                    onChange={(e) => setMagicContent(e.target.value)}
+                    placeholder="Draft testimonial text for client review..."
+                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMagicModal(false)}
+                    className="px-4 py-2.5 text-xs font-medium text-ink-800/70 hover:bg-surface-light rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2.5 text-xs font-semibold text-surface-white bg-ink-900 hover:bg-ink-800 rounded-xl shadow-sm transition disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{submitting ? "Sending Link..." : "Send Magic Link"}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Manual Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-ink-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-up">
-          <div className="bg-surface-white max-w-md w-full p-8 rounded-3xl shadow-2xl border border-ink-900/10 space-y-6">
-            <h2 className="font-display text-xl font-bold text-ink-900 flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              <span>Import Offline Praise</span>
-            </h2>
+      <AnimatePresence>
+        {showImportModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            {/* Backdrop Fade */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setShowImportModal(false)}
+              className="fixed inset-0 bg-ink-900/60 backdrop-blur-sm"
+            />
 
-            <form onSubmit={handleManualImport} className="space-y-4">
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="relative bg-surface-white max-w-lg w-full p-6 sm:p-8 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-ink-900/10 space-y-6 max-h-[90vh] overflow-y-auto"
+            >
               <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Target Widget
-                </label>
-                <select
-                  value={importWidgetId}
-                  onChange={(e) => setImportWidgetId(e.target.value)}
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                >
-                  {widgetsList.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                <h2 className="font-display text-xl font-bold text-ink-900 flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-ink-900" />
+                  <span>Import Offline Praise</span>
+                </h2>
+                <p className="text-xs text-ink-800/70 leading-relaxed mt-1">
+                  Import offline feedback from Slack, email, or DMs. Self-reported praise will be clearly tagged with a trust verification badge.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Author Name
-                </label>
-                <input
-                  type="text"
-                  value={importName}
-                  onChange={(e) => setImportName(e.target.value)}
-                  placeholder="Jane Doe"
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                />
-              </div>
+              <form onSubmit={handleManualImport} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                    Target Widget
+                  </label>
+                  <select
+                    value={importWidgetId}
+                    onChange={(e) => setImportWidgetId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900 bg-surface-white"
+                    required
+                  >
+                    {widgetsList.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Author Title
-                </label>
-                <input
-                  type="text"
-                  value={importTitle}
-                  onChange={(e) => setImportTitle(e.target.value)}
-                  placeholder="VP of Growth"
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                />
-              </div>
+                {/* 2-Column Row on Desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                      Author Name
+                    </label>
+                    <input
+                      type="text"
+                      value={importName}
+                      onChange={(e) => setImportName(e.target.value)}
+                      placeholder="Jane Doe"
+                      className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                      required
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                  Content
-                </label>
-                <textarea
-                  rows={3}
-                  value={importContent}
-                  onChange={(e) => setImportContent(e.target.value)}
-                  placeholder="Copy Slack/Email praise here..."
-                  className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
-                  required
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                      Author Title
+                    </label>
+                    <input
+                      type="text"
+                      value={importTitle}
+                      onChange={(e) => setImportTitle(e.target.value)}
+                      placeholder="VP of Growth"
+                      className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                    />
+                  </div>
+                </div>
 
-              <div className="p-3 bg-surface-light rounded-xl border border-ink-900/10 text-xs text-ink-800">
-                Notice: All manual imports are permanently tagged with the trust badge:{" "}
-                <strong>[Self-Reported / Imported]</strong>.
-              </div>
+                <div>
+                  <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
+                    Content Body
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={importContent}
+                    onChange={(e) => setImportContent(e.target.value)}
+                    placeholder="Copy Slack/Email praise here..."
+                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                    required
+                  />
+                </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-ink-800/70 hover:bg-surface-light rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 text-xs font-semibold text-surface-white bg-ink-900 hover:bg-ink-800 rounded-xl shadow-sm disabled:opacity-50"
-                >
-                  {submitting ? "Importing..." : "Import Praise"}
-                </button>
-              </div>
-            </form>
+                {/* Trust Badge Pill Aesthetic Callout */}
+                <div className="p-3.5 rounded-2xl bg-surface-light border border-ink-900/10 text-xs text-ink-800 space-y-1.5">
+                  <div className="flex items-center gap-2 font-mono font-semibold text-ink-900">
+                    <ShieldCheck className="w-4 h-4 text-ink-900" />
+                    <span>Trust Verification Badge Applied</span>
+                  </div>
+                  <p className="text-[11px] text-ink-800/70 leading-relaxed">
+                    Imported testimonials will carry the public trust pill badge:
+                  </p>
+                  <div className="pt-1">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-white border border-ink-800/20 text-ink-800 font-mono text-[10px] font-semibold shadow-xs">
+                      <span>Self-Reported / Imported</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(false)}
+                    className="px-4 py-2.5 text-xs font-medium text-ink-800/70 hover:bg-surface-light rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2.5 text-xs font-semibold text-surface-white bg-ink-900 hover:bg-ink-800 rounded-xl shadow-sm transition disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{submitting ? "Importing..." : "Import Praise"}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade to Pro Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Bulk Select & Approve Testimonials"
+        featureName="Pro Batch Moderation"
+        description="1-click batch approvals and bulk moderation are exclusive to Pro Workspaces. Upgrade to moderate 10+ testimonials instantly!"
+      />
     </div>
   );
 }

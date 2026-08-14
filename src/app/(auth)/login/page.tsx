@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, Lock, ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,7 @@ function LoginContent() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +38,9 @@ function LoginContent() {
         return;
       }
 
+      // Fast direct client-side navigation without redundant profile round-trips
+      router.push(redirectTo);
+      router.refresh();
     } catch (err: any) {
       if (err?.message?.includes("Failed to fetch") || !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
         setErrorMessage("Supabase is not configured in .env. Please set NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY to your Supabase project credentials.");
@@ -47,12 +51,20 @@ function LoginContent() {
     }
   };
 
-  const [showPassword, setShowPassword] = useState(false);
-
   return (
     <div className="min-h-screen bg-ink-900 flex items-center justify-center p-6 font-sans text-surface-white selection:bg-surface-white selection:text-ink-900">
-      <div className="max-w-md w-full bg-ink-800 p-8 sm:p-10 rounded-3xl border border-surface-white/10 shadow-2xl space-y-6 animate-fade-in-up">
-        <div className="text-center space-y-3">
+      <div className="max-w-md w-full bg-ink-800 p-8 sm:p-10 rounded-3xl border border-surface-white/10 shadow-2xl space-y-6 animate-fade-in-up relative">
+        {/* Absolute Corner Back Link */}
+        <Link
+          href="/"
+          className="absolute top-6 left-6 inline-flex items-center gap-1.5 text-xs text-surface-white/50 hover:text-surface-white transition font-medium"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Home</span>
+        </Link>
+
+        {/* Centered Logo Anchor */}
+        <div className="text-center space-y-3 pt-2">
           <Link href="/" className="inline-block group" title="Return to Landing Page">
             <div className="w-12 h-12 bg-surface-white rounded-2xl flex items-center justify-center mx-auto p-2 shadow-sm transition-transform group-hover:scale-105">
               <Image
@@ -96,9 +108,17 @@ function LoginContent() {
           </div>
 
           <div>
-            <label className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-[11px] font-mono text-surface-white/70 hover:text-surface-white underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
               <input
@@ -163,4 +183,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

@@ -3,7 +3,8 @@ import { db } from "@/db";
 import { adminAuditLog } from "@/db/schema";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import { Shield, Lock, Activity, Eye, AlertOctagon, Users, DollarSign, ShieldAlert } from "lucide-react";
+import { Shield, Lock, Activity, Eye, AlertOctagon, Users, DollarSign, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
+import SignOutButton from "@/app/(dashboard)/SignOutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function TechAdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-ink-900 text-surface-white font-sans p-6 md:p-10 space-y-8 selection:bg-surface-white selection:text-ink-900">
-      {/* Surface C Distinct Chrome Header */}
+      {/* Surface C Distinct Chrome Header with Sign Out */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-ink-800 pb-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-surface-white rounded-2xl flex items-center justify-center p-2">
@@ -55,17 +56,53 @@ export default async function TechAdminDashboardPage() {
           </div>
         </div>
 
-        <div className="px-4 py-2 rounded-xl bg-ink-800 border border-surface-white/10 text-xs font-mono text-surface-white/70 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-surface-white" />
-          <span>Role: tech_admin</span>
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 rounded-xl bg-ink-800 border border-surface-white/10 text-xs font-mono text-surface-white/70 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-surface-white" />
+            <span>Role: tech_admin</span>
+          </div>
+          <SignOutButton className="px-4 py-2 rounded-xl bg-surface-white/10 hover:bg-rose-500/20 hover:text-rose-400 border border-surface-white/20 text-surface-white text-xs font-medium transition flex items-center gap-1.5" />
         </div>
       </div>
 
-      {/* RLS Enforcement Warning Banner */}
-      <div className="p-4 bg-ink-800 border border-surface-white/20 rounded-2xl text-surface-white text-xs flex items-center gap-3">
-        <AlertOctagon className="w-5 h-5 flex-shrink-0 text-surface-white" />
-        <div>
-          <strong>Database Security Constraint (Section 5 & 4C):</strong> Tech Admin accounts are strictly forbidden from modifying or deleting creator testimonials at the database level. RLS policies reject all update/delete attempts.
+      {/* Role Capability Disclosure Matrix */}
+      <div className="bg-ink-800 p-6 rounded-3xl border border-surface-white/10 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-sm font-bold text-surface-white uppercase tracking-wider flex items-center gap-2">
+            <Shield className="w-4.5 h-4.5 text-surface-white" />
+            <span>Tech Admin Role Capabilities & RLS Boundary Specification</span>
+          </h2>
+          <span className="text-[10px] font-mono uppercase bg-surface-white/10 text-surface-white/80 px-2.5 py-1 rounded border border-surface-white/20">
+            Security Spec Enforced
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+          <div className="p-4 bg-ink-900/80 rounded-2xl border border-surface-white/10 space-y-2">
+            <div className="font-mono font-semibold text-surface-white flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>Allowed Admin Operations (Read & Audit)</span>
+            </div>
+            <ul className="space-y-1.5 text-surface-white/70 list-disc list-inside text-[11px] leading-relaxed">
+              <li><strong>User Accounts Visibility:</strong> Read-only view & suspension trigger (no editing profile data).</li>
+              <li><strong>Stripe Subscription Health:</strong> Read-only webhook & MRR telemetry monitoring.</li>
+              <li><strong>Upstash Threat Logs:</strong> Read-only rate limit & bot detection logs.</li>
+              <li><strong>Immutable Audit Trail:</strong> Read-only platform admin event logs.</li>
+              <li><strong>Account Suspension:</strong> Explicit write action that writes an immutable audit log entry.</li>
+            </ul>
+          </div>
+
+          <div className="p-4 bg-ink-900/80 rounded-2xl border border-surface-white/10 space-y-2">
+            <div className="font-mono font-semibold text-surface-white flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-rose-400" />
+              <span>Forbidden Operations (Denied by RLS)</span>
+            </div>
+            <ul className="space-y-1.5 text-surface-white/70 list-disc list-inside text-[11px] leading-relaxed">
+              <li><strong>Testimonial Editing:</strong> Cannot alter creator content, author names, or ratings.</li>
+              <li><strong>Testimonial Deletion:</strong> Cannot remove client praise from creator workspaces.</li>
+              <li><strong>Creator Token Access:</strong> Cannot view or reuse single-use magic link hashes.</li>
+              <li><strong>Direct Database Writes:</strong> Blocked at PostgreSQL RLS policy level.</li>
+            </ul>
+          </div>
         </div>
       </div>
 

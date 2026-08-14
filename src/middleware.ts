@@ -32,10 +32,29 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-
   const role = user?.app_metadata?.role;
 
-  // 1. Protected Creator Routes (Requires authenticated creator, Tech Admin is forbidden)
+  // 1. Route-specific Framing & Security Headers (Section 1 & 9)
+  if (pathname.startsWith("/embed")) {
+    // Embed pages are intended to be framed on arbitrary creator sites
+    supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors *");
+  } else if (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/widgets") ||
+    pathname.startsWith("/testimonials") ||
+    pathname.startsWith("/admin") ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
+  ) {
+    // Authenticated and Auth surfaces MUST reject framing to prevent Clickjacking attacks
+    supabaseResponse.headers.set("X-Frame-Options", "DENY");
+    supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+    supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
+  }
+
+  // 2. Protected Creator Routes (Requires authenticated creator, Tech Admin is forbidden)
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/widgets") ||
@@ -56,7 +75,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Tech Admin Route (Requires authenticated user with app_metadata.role = 'tech_admin')
+  // 3. Tech Admin Route (Requires authenticated user with app_metadata.role = 'tech_admin')
   if (pathname.startsWith("/admin")) {
     if (!user) {
       const url = request.nextUrl.clone();
@@ -70,7 +89,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 3. Auth Routes (If user is ALREADY logged in, redirect to respective role dashboard immediately)
+  // 4. Auth Routes (If user is ALREADY logged in, redirect to respective role dashboard immediately)
   const isAuthRoute = pathname === "/login" || pathname === "/signup";
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
@@ -83,11 +102,14 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/embed/:path*",
     "/dashboard/:path*",
     "/widgets/:path*",
     "/testimonials/:path*",
     "/admin/:path*",
     "/login",
     "/signup",
+    "/forgot-password",
+    "/reset-password",
   ],
 };

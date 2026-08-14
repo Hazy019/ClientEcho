@@ -33,6 +33,7 @@ export const creators = pgTable("creators", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripePriceId: text("stripe_price_id"),
   subscriptionStatus: text("subscription_status").default("free").notNull(),
+  customCssTrialsUsed: integer("custom_css_trials_used").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -122,3 +123,21 @@ export const adminAuditLog = pgTable("admin_audit_log", {
   ipAddress: text("ip_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// 6. Password Reset Tokens
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userEmail: text("user_email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    hashIdx: index("idx_password_reset_tokens_hash").on(table.tokenHash),
+    emailIdx: index("idx_password_reset_tokens_email").on(table.userEmail),
+  })
+);
+
