@@ -5,6 +5,8 @@ import { passwordResetTokens } from "@/db/schema";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { checkDualRateLimit } from "@/lib/security/rate-limit";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();

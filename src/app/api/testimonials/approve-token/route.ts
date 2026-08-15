@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       return t;
     });
 
-    // Invalidate Redis cache for associated widget
+    // Invalidate Redis cache & notify creator
     if (updatedTestimonial?.widgetId) {
       try {
         const [targetWidget] = await db
@@ -135,8 +135,29 @@ export async function POST(req: Request) {
         if (targetWidget?.slug) {
           await invalidateWidgetCache(targetWidget.slug);
         }
+
+        // Notify creator if notifyOnApproval preference is enabled
+        const { creators } = await import("@/db/schema");
+        const [creator] = await db
+          .select()
+          .from(creators)
+          .where(eq(creators.id, updatedTestimonial.creatorId));
+
+        if (creator) {
+          const creatorSettings = (creator.settings || {}) as Record<string, any>;
+          if (creatorSettings.notifyOnApproval !== false) {
+            const { sendMagicLinkApprovedNotificationEmail } = await import("@/lib/email");
+            await sendMagicLinkApprovedNotificationEmail({
+              creatorEmail: creator.email,
+              creatorName: creator.name || undefined,
+              clientEmail: tokenRecord.clientEmail,
+              authorName: updatedTestimonial.authorName,
+              widgetName: targetWidget?.name || "Portfolio Widget",
+            });
+          }
+        }
       } catch (cacheErr) {
-        console.error("Cache invalidation error:", cacheErr);
+        console.error("Cache invalidation / approval email notification error:", cacheErr);
       }
     }
 

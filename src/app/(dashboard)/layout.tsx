@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
-import { CheckSquare, Sparkles, SlidersHorizontal, BarChart3, Settings, CreditCard, Shield } from "lucide-react";
-
+import DashboardNav from "@/components/ui/DashboardNav";
+import HelpSupportButton from "@/components/ui/HelpSupportButton";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +18,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-surface-light flex flex-col font-sans text-ink-900">
-        {/* Top Header */}
-        <header className="h-20 bg-ink-900 text-surface-white px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm border-b border-ink-800">
-          <div className="flex items-center gap-8">
-            <Link href="/testimonials" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-surface-white rounded-lg flex items-center justify-center p-1">
+      <div className="min-h-screen bg-surface-light font-sans text-ink-900 overflow-hidden">
+        {/* Top Header: fixed, outside the scroll container entirely */}
+        <header className="app-navbar bg-ink-900 text-surface-white px-4 md:px-6 flex items-center justify-between">
+          {/* Left: Logo + Nav */}
+          <div className="flex items-center gap-3 md:gap-6 min-w-0">
+            <Link href="/testimonials" className="flex items-center gap-2.5 flex-shrink-0">
+              <div className="w-7 h-7 bg-surface-white rounded-lg flex items-center justify-center p-1">
                 <Image
                   src="/ClientEcho_logo.png"
                   alt="ClientEcho Logo"
@@ -32,61 +33,33 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   className="w-full h-full object-contain"
                 />
               </div>
-              <span className="font-display font-bold text-lg tracking-tight text-surface-white">
+              <span className="font-display font-bold text-base tracking-tight text-surface-white hidden sm:block">
                 ClientEcho
               </span>
             </Link>
 
-            <nav className="hidden lg:flex items-center gap-5 text-xs font-medium text-surface-white/70">
-              <Link
-                href="/testimonials"
-                className="hover:text-surface-white transition flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-white/10 text-surface-white"
-              >
-                <CheckSquare className="w-4 h-4" />
-                <span>Approval Queue</span>
-              </Link>
-              <Link
-                href="/widgets"
-                className="hover:text-surface-white transition flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-surface-white/5"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Widgets</span>
-              </Link>
-              <Link
-                href="/testimonials#channels"
-                className="hover:text-surface-white transition flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-surface-white/5"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                <span>Ingestion Channels</span>
-              </Link>
-              <Link
-                href="/dashboard"
-                className="hover:text-surface-white transition flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-surface-white/5"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>Analytics</span>
-              </Link>
-              <span className="cursor-not-allowed opacity-50 flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                <Settings className="w-4 h-4" />
-                <span>Settings</span>
-              </span>
-              <span className="cursor-not-allowed opacity-50 flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                <CreditCard className="w-4 h-4" />
-                <span>Billing</span>
-              </span>
-            </nav>
+            <DashboardNav />
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <span className="inline-flex items-center px-3 py-1 rounded-full font-mono text-surface-white bg-ink-800 border border-surface-white/20 max-w-[200px] truncate">
+          {/* Right: Email + Sign Out */}
+          <div className="flex items-center gap-2 md:gap-3 text-xs flex-shrink-0">
+            <span
+              title={userEmail}
+              className="hidden md:inline-flex items-center px-2.5 py-1 rounded-full font-mono text-surface-white/70 bg-ink-800 border border-surface-white/15 max-w-[180px] truncate text-[11px]"
+            >
               {userEmail}
             </span>
             <SignOutButton />
           </div>
         </header>
 
-        {/* Main Content Body */}
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">{children}</main>
+        {/* Dedicated Scrollable Region starting beneath the fixed navbar */}
+        <main className="app-scroll-region bg-surface-light">
+          <div className="max-w-7xl w-full mx-auto p-4 md:p-8">{children}</div>
+        </main>
+
+        {/* Floating Persistent Help & Support Affordance */}
+        <HelpSupportButton />
       </div>
     </ToastProvider>
   );

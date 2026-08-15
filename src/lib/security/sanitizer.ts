@@ -1,8 +1,4 @@
-import createDOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
-
-const windowInstance = new JSDOM("<!DOCTYPE html><html><body></body></html>").window;
-const DOMPurify = createDOMPurify(windowInstance as any);
+import DOMPurify from "isomorphic-dompurify";
 
 
 /**

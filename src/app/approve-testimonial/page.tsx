@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { CheckCircle, AlertCircle, Clock, Star, Loader2, Edit2, ShieldCheck } from "lucide-react";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 
 export const dynamic = "force-dynamic";
 
@@ -84,10 +85,24 @@ function ApproveTestimonialContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-light flex items-center justify-center p-6 font-sans">
-        <div className="flex items-center gap-3 text-ink-900 font-medium text-sm">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Verifying secure approval token...</span>
+      <div className="min-h-screen bg-surface-light flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-xl w-full bg-surface-white p-8 rounded-3xl border border-ink-900/10 shadow-xl space-y-6">
+          <div className="flex items-center gap-3 border-b border-ink-900/10 pb-6">
+            <SkeletonBlock className="w-10 h-10 rounded-xl" />
+            <div className="space-y-2 flex-1">
+              <SkeletonBlock className="w-48 h-5 rounded-md" />
+              <SkeletonBlock className="w-32 h-3 rounded-md" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <SkeletonBlock className="w-24 h-4 rounded-md" />
+            <SkeletonBlock className="w-full h-24 rounded-2xl" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <SkeletonBlock className="w-full h-10 rounded-xl" />
+            <SkeletonBlock className="w-full h-10 rounded-xl" />
+          </div>
+          <SkeletonBlock className="w-full h-12 rounded-2xl" />
         </div>
       </div>
     );

@@ -81,13 +81,19 @@ export async function POST(req: Request) {
       promptMessage: cleanPrompt,
     });
 
+    // Construct approval URL for dev mode fallback
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
+    console.log(`\n=========================================\n[DEV MAGIC LINK GENERATED]\nRecipient: ${data.clientEmail}\nApproval URL: ${approvalUrl}\n=========================================\n`);
+
     return NextResponse.json({
       success: true,
       testimonialId: newTestimonial.id,
       emailSent: emailResult.success,
+      devApprovalUrl: approvalUrl,
     });
   } catch (error: any) {
     console.error("Magic link request error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

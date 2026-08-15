@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Syne, Manrope } from "next/font/google";
+import { Syne, Manrope, Inter, Roboto, Outfit } from "next/font/google";
 import "./globals.css";
 
 const syne = Syne({
@@ -11,6 +11,25 @@ const syne = Syne({
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const roboto = Roboto({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-roboto",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -97,7 +116,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${syne.variable} ${manrope.variable}`}>
+    <html lang="en" className={`${syne.variable} ${manrope.variable} ${inter.variable} ${roboto.variable} ${outfit.variable}`}>
       <head>
         <link rel="icon" href="/ClientEcho_logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/ClientEcho_logo.png" />

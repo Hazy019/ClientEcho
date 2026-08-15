@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/db";
-import { testimonials, widgets } from "@/db/schema";
+import { testimonials, widgets, creators } from "@/db/schema";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { publicFormSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "@/lib/security/sanitizer";
@@ -76,6 +76,30 @@ export async function POST(req: Request) {
         videoUrl: videoCheck.normalizedUrl || null,
       })
       .returning();
+
+    // Step 6: Conditionally send notification email to creator based on preferences
+    try {
+      const [creator] = await db
+        .select()
+        .from(creators)
+        .where(eq(creators.id, targetWidget.creatorId));
+
+      if (creator) {
+        const creatorSettings = (creator.settings || {}) as Record<string, any>;
+        if (creatorSettings.notifyOnSubmission !== false) {
+          const { sendNewSubmissionNotificationEmail } = await import("@/lib/email");
+          await sendNewSubmissionNotificationEmail({
+            creatorEmail: creator.email,
+            creatorName: creator.name || undefined,
+            authorName: cleanAuthorName,
+            content: cleanContent,
+            widgetName: targetWidget.name,
+          });
+        }
+      }
+    } catch (emailErr) {
+      console.error("Failed to trigger submission notification email:", emailErr);
+    }
 
     return NextResponse.json({
       success: true,

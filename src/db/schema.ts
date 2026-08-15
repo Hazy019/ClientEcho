@@ -34,6 +34,15 @@ export const creators = pgTable("creators", {
   stripePriceId: text("stripe_price_id"),
   subscriptionStatus: text("subscription_status").default("free").notNull(),
   customCssTrialsUsed: integer("custom_css_trials_used").default(0).notNull(),
+  settings: jsonb("settings").default({
+    notifyOnSubmission: true,
+    notifyOnApproval: true,
+    magicLinksEnabled: true,
+    publicFormEnabled: true,
+    manualImportEnabled: true,
+    requireRating: true,
+    formIntroCopy: "Share your experience working with us! Your feedback helps us improve and build social proof.",
+  }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

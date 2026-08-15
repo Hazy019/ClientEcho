@@ -5,6 +5,8 @@ import { passwordResetTokens } from "@/db/schema";
 import { eq, and, isNull, gt } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const { rawToken, newPassword } = await req.json();

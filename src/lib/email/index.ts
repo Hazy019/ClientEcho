@@ -48,6 +48,119 @@ export async function sendMagicLinkApprovalEmail(params: {
   }
 }
 
+export async function sendNewSubmissionNotificationEmail(params: {
+  creatorEmail: string;
+  creatorName?: string;
+  authorName: string;
+  content: string;
+  widgetName: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.log(`[DEV / TEST] Notification: New testimonial submission from ${params.authorName} on widget ${params.widgetName}`);
+    return { success: true };
+  }
+
+  try {
+    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
+    await resend.emails.send({
+      from: fromEmail,
+      to: params.creatorEmail,
+      subject: `New Testimonial Submitted by ${params.authorName}`,
+      html: `
+        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
+          <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">New Testimonial Submission</h2>
+          <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 16px;">
+            A new client testimonial was submitted for your widget <strong>${params.widgetName}</strong>.
+          </p>
+          <blockquote style="border-left: 4px solid #2D2D2D; padding-left: 14px; color: #444; font-style: italic; margin-bottom: 24px;">
+            "${params.content}" — <strong>${params.authorName}</strong>
+          </blockquote>
+          <p style="font-size: 14px; color: #666;">
+            Log in to your ClientEcho dashboard Approval Queue to review and publish this testimonial.
+          </p>
+        </div>
+      `,
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Failed to send submission notification:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function sendMagicLinkApprovedNotificationEmail(params: {
+  creatorEmail: string;
+  creatorName?: string;
+  clientEmail: string;
+  authorName: string;
+  widgetName: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.log(`[DEV / TEST] Notification: Magic link approved by ${params.authorName} (${params.clientEmail})`);
+    return { success: true };
+  }
+
+  try {
+    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
+    await resend.emails.send({
+      from: fromEmail,
+      to: params.creatorEmail,
+      subject: `Magic Link Approved by ${params.authorName}!`,
+      html: `
+        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
+          <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Testimonial Approved!</h2>
+          <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 16px;">
+            Great news! <strong>${params.authorName}</strong> (${params.clientEmail}) clicked your 1-click magic link and approved their testimonial for widget <strong>${params.widgetName}</strong>.
+          </p>
+          <p style="font-size: 14px; color: #666;">
+            The approved testimonial is now live in your embed widget.
+          </p>
+        </div>
+      `,
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Failed to send approval notification:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function sendSupportEmail(params: {
+  fromEmail: string;
+  subject: string;
+  message: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const supportInbox = process.env.SUPPORT_EMAIL || "support@clientecho.com";
+
+  if (!resend) {
+    console.log(`[DEV / TEST] Support Message from ${params.fromEmail}: [${params.subject}] ${params.message}`);
+    return { success: true };
+  }
+
+  try {
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "ClientEcho Support <noreply@clientecho.com>",
+      to: supportInbox,
+      replyTo: params.fromEmail,
+      subject: `[Dashboard Support Query] ${params.subject}`,
+      html: `
+        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D;">
+          <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 12px;">New Dashboard Support Request</h3>
+          <p><strong>From:</strong> ${params.fromEmail}</p>
+          <p><strong>Subject:</strong> ${params.subject}</p>
+          <div style="background-color: #F7FAFC; padding: 16px; border-radius: 12px; margin-top: 16px; font-size: 14px; line-height: 1.6;">
+            ${params.message.replace(/\n/g, "<br/>")}
+          </div>
+        </div>
+      `,
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Failed to send support email:", err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function sendPasswordResetEmail(params: {
   toEmail: string;
   rawToken: string;
@@ -131,4 +244,3 @@ export async function sendEmailVerificationLink(params: {
     return { success: false, error: err.message || "Failed to send verification email" };
   }
 }
-

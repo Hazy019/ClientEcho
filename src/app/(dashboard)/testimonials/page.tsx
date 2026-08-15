@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { useToast } from "@/components/ui/Toast";
 import UpgradeModal from "@/components/ui/UpgradeModal";
+import CustomSelect from "@/components/ui/CustomSelect";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,8 @@ export default function TestimonialsModerationPage() {
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Per-card idempotency: tracks which testimonial ID is currently being actioned
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Magic link form state
   const [magicWidgetId, setMagicWidgetId] = useState("");
@@ -109,7 +113,12 @@ export default function TestimonialsModerationPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast("Magic link request sent to client!", "success");
+        if (data.devApprovalUrl) {
+          console.log("[DEV APPROVAL LINK]:", data.devApprovalUrl);
+          showToast(`Magic link created! Dev URL: ${data.devApprovalUrl}`, "success");
+        } else {
+          showToast("Magic link request sent to client!", "success");
+        }
         setShowMagicModal(false);
         setMagicEmail("");
         setMagicName("");
@@ -165,6 +174,8 @@ export default function TestimonialsModerationPage() {
   };
 
   const handleStatusChange = async (id: string, newStatus: "approved" | "rejected") => {
+    if (actionLoadingId) return; // Prevent concurrent actions
+    setActionLoadingId(id);
     try {
       const res = await fetch("/api/testimonials", {
         method: "PATCH",
@@ -173,12 +184,14 @@ export default function TestimonialsModerationPage() {
       });
       if (res.ok) {
         setItems(items.map((item) => (item.id === id ? { ...item, status: newStatus } : item)));
-        showToast(`Testimonial status updated to ${newStatus}.`, "success");
+        showToast(`Testimonial ${newStatus === "approved" ? "approved ✓" : "rejected"}.`, "success");
       } else {
         showToast("Failed to update status.", "error");
       }
     } catch {
       showToast("Network error.", "error");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -309,11 +322,30 @@ export default function TestimonialsModerationPage() {
         </div>
       </div>
 
-      {/* Testimonials Queue */}
       {loadingItems ? (
-        <div className="py-16 flex items-center justify-center text-ink-900 text-sm font-medium gap-3">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading queue...</span>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-surface-white p-6 rounded-3xl border border-ink-900/10 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SkeletonBlock className="w-10 h-10 rounded-full" />
+                  <div className="space-y-1">
+                    <SkeletonBlock className="w-32 h-4 rounded-md" />
+                    <SkeletonBlock className="w-24 h-3 rounded-md" />
+                  </div>
+                </div>
+                <SkeletonBlock className="w-28 h-6 rounded-full" />
+              </div>
+              <SkeletonBlock className="w-full h-12 rounded-xl" />
+              <div className="flex items-center justify-between pt-2 border-t border-ink-900/5">
+                <SkeletonBlock className="w-24 h-4 rounded-md" />
+                <div className="flex items-center gap-2">
+                  <SkeletonBlock className="w-20 h-8 rounded-xl" />
+                  <SkeletonBlock className="w-20 h-8 rounded-xl" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="bg-surface-white p-16 rounded-3xl border border-ink-900/10 text-center space-y-3">
@@ -449,9 +481,14 @@ export default function TestimonialsModerationPage() {
                   {item.status !== "approved" && (
                     <button
                       onClick={() => handleStatusChange(item.id, "approved")}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-semibold rounded-lg shadow-sm transition"
+                      disabled={actionLoadingId === item.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-semibold rounded-lg shadow-sm transition active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                     >
-                      <Check className="w-3.5 h-3.5" />
+                      {actionLoadingId === item.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
                       <span>Approve</span>
                     </button>
                   )}
@@ -459,9 +496,14 @@ export default function TestimonialsModerationPage() {
                   {item.status !== "rejected" && (
                     <button
                       onClick={() => handleStatusChange(item.id, "rejected")}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-light hover:bg-ink-900/10 text-ink-900 border border-ink-900/20 font-medium rounded-lg transition"
+                      disabled={actionLoadingId === item.id}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-light hover:bg-ink-900/10 text-ink-900 border border-ink-900/20 font-medium rounded-lg transition active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      {actionLoadingId === item.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <X className="w-3.5 h-3.5" />
+                      )}
                       <span>Reject</span>
                     </button>
                   )}
@@ -517,18 +559,13 @@ export default function TestimonialsModerationPage() {
                   <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                     Target Widget
                   </label>
-                  <select
+                  <CustomSelect
+                    options={widgetsList.map((w) => ({ value: w.id, label: w.name }))}
                     value={magicWidgetId}
-                    onChange={(e) => setMagicWidgetId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900 bg-surface-white"
-                    required
-                  >
-                    {widgetsList.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setMagicWidgetId(val)}
+                    placeholder="Select a widget..."
+                    emptyGuidance="Create a widget first to send magic links"
+                  />
                 </div>
 
                 {/* 2-Column Row on Desktop */}
@@ -636,18 +673,13 @@ export default function TestimonialsModerationPage() {
                   <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
                     Target Widget
                   </label>
-                  <select
+                  <CustomSelect
+                    options={widgetsList.map((w) => ({ value: w.id, label: w.name }))}
                     value={importWidgetId}
-                    onChange={(e) => setImportWidgetId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900 bg-surface-white"
-                    required
-                  >
-                    {widgetsList.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setImportWidgetId(val)}
+                    placeholder="Select a widget..."
+                    emptyGuidance="Create a widget first to import praise"
+                  />
                 </div>
 
                 {/* 2-Column Row on Desktop */}

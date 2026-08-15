@@ -2,72 +2,229 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   DESIGN SYSTEM TOKENS
+   ============================================================================ */
 :root {
+  /* Color Palette */
   --ink-900: #2D2D2D;
   --ink-800: #33363B;
   --surface-light: #EFF3F6;
   --surface-white: #FFFFFF;
+
+  /* Typography */
+  --font-display: var(--font-syne), "Syne", sans-serif;
+  --font-body: var(--font-manrope), "Manrope", sans-serif;
+
+  /* Border Radius System (Visual Rhyming) */
+  --radius-pill: 9999px;
+  --radius-card: 1.5rem;    /* 24px */
+  --radius-panel: 1rem;     /* 16px */
+  --radius-sm: 0.75rem;     /* 12px */
+  --radius-xs: 0.5rem;      /* 8px */
+
+  /* Depth / Shadow Tokens */
+  --shadow-card: 0 2px 8px -2px rgba(45,45,45,0.08), 0 1px 3px -1px rgba(45,45,45,0.06);
+  --shadow-float: 0 8px 30px -6px rgba(45,45,45,0.18), 0 3px 10px -3px rgba(45,45,45,0.10);
+  --shadow-navbar: 0 1px 0 0 rgba(255,255,255,0.06), 0 2px 8px -2px rgba(0,0,0,0.2);
+
+  /* Opacity Hierarchy (Text) */
+  --text-primary: 1.0;
+  --text-secondary: 0.7;
+  --text-tertiary: 0.45;
+  --text-ghost: 0.25;
+
+  /* Scrollbar */
+  --scrollbar-thumb: var(--ink-800);
+  --scrollbar-thumb-dark: rgba(255,255,255,0.18);
+  --scrollbar-track: transparent;
 }
 
+/* ============================================================================
+   BASE LAYER
+   ============================================================================ */
 @layer base {
-  html {
-    scroll-behavior: smooth;
-    /* Firefox Custom Scrollbar */
-    scrollbar-width: thin;
-    scrollbar-color: var(--ink-800) var(--surface-light);
+  html, body {
+    overflow: hidden;
+    height: 100%;
   }
 
   body {
     @apply bg-surface-white text-ink-900 font-sans antialiased text-base leading-relaxed;
   }
 
-  /* Global Typography Scale Standards */
+  /* ── Typography Scale (Syne Display + Manrope Body) ── */
   h1 {
-    font-family: var(--font-syne), sans-serif;
-    font-size: clamp(2.75rem, 5vw, 3.5rem); /* 44px - 56px */
+    font-family: var(--font-display);
+    font-size: clamp(2.75rem, 5vw, 3.5rem);
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
   }
 
   h2 {
-    font-family: var(--font-syne), sans-serif;
-    font-size: clamp(2rem, 3.5vw, 2.25rem); /* 32px - 36px */
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.5vw, 2.25rem);
     font-weight: 700;
-    line-height: 1.25;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
   }
 
   h3 {
-    font-family: var(--font-syne), sans-serif;
-    font-size: 1.25rem; /* 20px */
+    font-family: var(--font-display);
+    font-size: 1.25rem;
     font-weight: 700;
-    line-height: 1.35;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
   }
 
-  p, li, input, textarea, select {
-    font-family: var(--font-manrope), sans-serif;
+  p, li, input, textarea, select, label, span {
+    font-family: var(--font-body);
+  }
+
+  /* Focus ring for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--ink-900);
+    outline-offset: 2px;
   }
 }
 
-/* Chromium & Webkit Custom Branded Scrollbar (~8px wide, rounded, thumb in --ink-800) */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* ============================================================================
+   STRUCTURAL LAYOUT — Fixed Header + Scroll Region
+   ============================================================================ */
+.app-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 50;
+  box-shadow: var(--shadow-navbar);
 }
 
-::-webkit-scrollbar-track {
-  background: var(--surface-light);
+.app-scroll-region {
+  margin-top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-::-webkit-scrollbar-thumb {
-  background-color: var(--ink-800);
+/* ============================================================================
+   CUSTOM SCROLLBAR — Branded Floating Pill
+   Works on: Chrome, Edge, Brave (WebKit/Blink)
+   Strategy: transparent track + narrow pill thumb via border-clip trick
+   ============================================================================ */
+
+/* Hide the scrollbar on body/html entirely — all scrolling goes through
+   .app-scroll-region which has its own styled scrollbar */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+html, body {
+  scrollbar-width: none;
+}
+
+/* ── Light Surface Scrollbar (Landing + Creator Dashboard) ── */
+.app-scroll-region::-webkit-scrollbar {
+  width: 10px;
+}
+
+.app-scroll-region::-webkit-scrollbar-track {
+  background: transparent;
   border-radius: 9999px;
-  border: 2px solid var(--surface-light);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--ink-900);
+.app-scroll-region::-webkit-scrollbar-thumb {
+  /* Reliable cross-browser approach: mid-opacity dark pill.
+     rgba(80,80,80,0.35) sits between dark and light —
+     visible on both #33363B hero and #EFF3F6 surface-light sections. */
+  background-color: rgba(80, 80, 80, 0.35);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  min-height: 40px;
+  transition: background-color 0.25s ease;
 }
 
+.app-scroll-region::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(60, 60, 60, 0.6);
+}
+
+.app-scroll-region::-webkit-scrollbar-thumb:active {
+  background-color: rgba(40, 40, 40, 0.8);
+}
+
+/* Firefox */
+.app-scroll-region {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45, 45, 45, 0.22) transparent;
+}
+
+/* ── Dark Surface Scrollbar (Admin Dashboard) ── */
+.app-scroll-region--dark::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.16);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  min-height: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.app-scroll-region--dark::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+.app-scroll-region--dark::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+.app-scroll-region--dark {
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* ── Generic .custom-scrollbar class (modals, drawers, table overflow) ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(45, 45, 45, 0.18);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(45, 45, 45, 0.45);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45, 45, 45, 0.18) transparent;
+}
+
+/* ── Dark custom-scrollbar (admin tables) ── */
+.custom-scrollbar--dark::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.14);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar--dark::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -79,12 +236,62 @@
   }
 }
 
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Stagger delay utilities */
+.animate-slide-in-left {
+  animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============================================================================
+   STAGGER DELAY UTILITIES
+   ============================================================================ */
 .delay-1 { animation-delay: 80ms; }
 .delay-2 { animation-delay: 160ms; }
 .delay-3 { animation-delay: 240ms; }
 .delay-4 { animation-delay: 320ms; }
+
+/* ============================================================================
+   ACCESSIBILITY — Reduced Motion
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-fade-in-up,
+  .animate-slide-in-left {
+    animation: none !important;
+  }
+}
+
+/* ============================================================================
+   SCROLLBAR — Horizontal (for tables in admin)
+   ============================================================================ */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  background-clip: padding-box;
+  border-radius: 9999px;
+}

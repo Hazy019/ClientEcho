@@ -42,6 +42,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/widgets") ||
     pathname.startsWith("/testimonials") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/channels") ||
     pathname.startsWith("/admin") ||
     pathname === "/login" ||
     pathname === "/signup" ||
@@ -58,7 +61,10 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/widgets") ||
-    pathname.startsWith("/testimonials");
+    pathname.startsWith("/testimonials") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/channels");
 
   if (isProtectedRoute) {
     if (!user) {
@@ -106,6 +112,9 @@ export const config = {
     "/dashboard/:path*",
     "/widgets/:path*",
     "/testimonials/:path*",
+    "/settings/:path*",
+    "/billing/:path*",
+    "/channels/:path*",
     "/admin/:path*",
     "/login",
     "/signup",

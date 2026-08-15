@@ -1,11 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, Copy, Check, Code, Eye, Plus, Loader2, Star, Crown, Palette, Type, Layout, Code2, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Copy, Check, Code, Eye, Plus, Loader2, Star, Crown, Palette, Type, Layout, Code2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import UpgradeModal from "@/components/ui/UpgradeModal";
+import CustomSelect, { SelectOption } from "@/components/ui/CustomSelect";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 
 export const dynamic = "force-dynamic";
+
+function getLuminance(hex: string): number {
+  const cleanHex = hex.replace("#", "");
+  if (cleanHex.length !== 6) return 0.5;
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+  const a = [r, g, b].map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+}
+
+function getContrastRatio(hex1: string, hex2: string): number {
+  const l1 = getLuminance(hex1);
+  const l2 = getLuminance(hex2);
+  const bright = Math.max(l1, l2);
+  const dark = Math.min(l1, l2);
+  return (bright + 0.05) / (dark + 0.05);
+}
 
 interface WidgetItem {
   id: string;
@@ -49,6 +69,7 @@ export default function WidgetsPage() {
   const [customCss, setCustomCss] = useState("");
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   const isPro = subscriptionStatus === "pro";
 
@@ -298,27 +319,24 @@ export default function WidgetsPage() {
                     PRO
                   </span>
                 </label>
-                <select
+                <CustomSelect
+                  options={[
+                    { value: "Manrope", label: "Manrope (Clean Modern Sans - Starter)" },
+                    { value: "Inter", label: "Inter (Neutral Precision - Starter)" },
+                    { value: "Syne", label: "Syne (Bold Geometric Display - Pro)", disabled: !isPro, disabledBadge: "PRO" },
+                    { value: "Roboto", label: "Roboto (Classic Sans - Pro)", disabled: !isPro, disabledBadge: "PRO" },
+                    { value: "Outfit", label: "Outfit (High Contrast Premium - Pro)", disabled: !isPro, disabledBadge: "PRO" },
+                  ]}
                   value={fontPairing}
-                  onChange={(e) => {
-                    if (!isPro && ["Syne", "Roboto", "Outfit"].includes(e.target.value)) {
-                      triggerUpgrade(
-                        "Pro Typography",
-                        "Custom Font Pairings",
-                        "Syne, Roboto, and Outfit typography overrides require a Pro Workspace plan."
-                      );
-                      return;
-                    }
-                    setFontPairing(e.target.value as any);
+                  onChange={(val) => setFontPairing(val as any)}
+                  onDisabledSelect={(opt) => {
+                    triggerUpgrade(
+                      "Pro Typography",
+                      "Custom Font Pairings",
+                      "Syne, Roboto, and Outfit typography overrides require a Pro Workspace plan."
+                    );
                   }}
-                  className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-xs font-sans focus:outline-none focus:border-ink-900 bg-surface-white cursor-pointer"
-                >
-                  <option value="Manrope">Manrope (Clean Modern Sans - Starter)</option>
-                  <option value="Inter">Inter (Neutral Precision - Starter)</option>
-                  <option value="Syne">Syne (Bold Geometric Display - Pro)</option>
-                  <option value="Roboto">Roboto (Classic Sans - Pro)</option>
-                  <option value="Outfit">Outfit (High Contrast Premium - Pro)</option>
-                </select>
+                />
               </div>
 
               {/* Accent Color Picker */}
@@ -357,6 +375,21 @@ export default function WidgetsPage() {
                     placeholder="#2D2D2D"
                   />
                 </div>
+                {(() => {
+                  const safeHex = accentColor.startsWith("#") ? accentColor : "#2D2D2D";
+                  const ratio = getContrastRatio(safeHex, "#FFFFFF");
+                  if (ratio < 3.0) {
+                    return (
+                      <div className="mt-2.5 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-900 flex items-center gap-2 font-sans">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span>
+                          <strong>Low Contrast Warning:</strong> Accent color ({accentColor}) has a {ratio.toFixed(1)}:1 contrast ratio against white background and may be hard to read.
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Layout Variant */}
@@ -466,7 +499,18 @@ export default function WidgetsPage() {
 
           {/* Rendered Dynamic Live Card Preview */}
           <div
-            style={{ fontFamily: fontPairing }}
+            style={{
+              fontFamily:
+                fontPairing === "Syne"
+                  ? "var(--font-syne), sans-serif"
+                  : fontPairing === "Inter"
+                  ? "var(--font-inter), sans-serif"
+                  : fontPairing === "Roboto"
+                  ? "var(--font-roboto), sans-serif"
+                  : fontPairing === "Outfit"
+                  ? "var(--font-outfit), sans-serif"
+                  : "var(--font-manrope), sans-serif",
+            }}
             className="bg-surface-light p-6 rounded-3xl border border-ink-900/10 space-y-4 min-h-[340px] flex flex-col justify-center transition-all duration-300"
           >
             <div
@@ -528,9 +572,19 @@ export default function WidgetsPage() {
             </h3>
 
             {loading ? (
-              <div className="py-6 text-center text-ink-800/50 text-xs flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Loading active widgets...</span>
+              <div className="space-y-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <SkeletonBlock className="w-40 h-5 rounded-md" />
+                        <SkeletonBlock className="w-48 h-3 rounded-md" />
+                      </div>
+                      <SkeletonBlock className="w-24 h-9 rounded-xl" />
+                    </div>
+                    <SkeletonBlock className="w-full h-16 rounded-xl" />
+                  </div>
+                ))}
               </div>
             ) : widgets.length === 0 ? (
               <div className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 text-center text-xs text-ink-800/60 italic">

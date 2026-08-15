@@ -67,11 +67,20 @@ export default function WidgetDisplayClient({
       ? [testimonials[rotatorIndex % testimonials.length]]
       : testimonials;
 
+  const fontMap: Record<string, string> = {
+    Syne: "var(--font-syne), sans-serif",
+    Manrope: "var(--font-manrope), sans-serif",
+    Inter: "var(--font-inter), sans-serif",
+    Roboto: "var(--font-roboto), sans-serif",
+    Outfit: "var(--font-outfit), sans-serif",
+  };
+  const activeFontFamily = fontMap[fontPairing] || "var(--font-manrope), sans-serif";
+
   return (
     <div
       ref={containerRef}
-      style={{ backgroundColor, color: textColor, fontFamily: fontPairing }}
-      className="p-4 font-sans antialiased text-sm leading-relaxed relative"
+      style={{ backgroundColor, color: textColor, fontFamily: activeFontFamily }}
+      className="p-4 antialiased text-sm leading-relaxed relative"
     >
       {/* Scoped Custom CSS Injection (Sanitized Scope) */}
       {customCss && (
@@ -79,7 +88,7 @@ export default function WidgetDisplayClient({
       )}
 
       {testimonials.length === 0 ? (
-        <div className="text-center py-8 text-ink-800/50 italic">
+        <div className="text-center py-8 opacity-60 italic" style={{ color: textColor }}>
           No testimonials to display yet.
         </div>
       ) : (
@@ -87,7 +96,7 @@ export default function WidgetDisplayClient({
           {/* Rotator Navigation Bar */}
           {layoutVariant === "rotator" && testimonials.length > 1 && (
             <div className="flex items-center justify-between pb-2 border-b border-ink-900/10">
-              <span className="text-xs font-mono text-ink-800/60 font-semibold">
+              <span className="text-xs font-mono font-semibold opacity-70" style={{ color: textColor }}>
                 Testimonial {rotatorIndex + 1} of {testimonials.length}
               </span>
               <div className="flex items-center gap-1">
@@ -95,14 +104,16 @@ export default function WidgetDisplayClient({
                   onClick={() =>
                     setRotatorIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)
                   }
-                  className="p-1.5 rounded-lg border border-ink-900/20 hover:bg-surface-light text-ink-900 transition"
+                  className="p-1.5 rounded-lg border border-ink-900/20 hover:bg-surface-light transition"
+                  style={{ color: textColor }}
                   aria-label="Previous testimonial"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setRotatorIndex((prev) => (prev + 1) % testimonials.length)}
-                  className="p-1.5 rounded-lg border border-ink-900/20 hover:bg-surface-light text-ink-900 transition"
+                  className="p-1.5 rounded-lg border border-ink-900/20 hover:bg-surface-light transition"
+                  style={{ color: textColor }}
                   aria-label="Next testimonial"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -149,7 +160,7 @@ export default function WidgetDisplayClient({
                 )}
 
                 {/* Content */}
-                <p className="mb-4 whitespace-pre-line text-ink-900 leading-relaxed">
+                <p className="mb-4 whitespace-pre-line leading-relaxed font-normal" style={{ color: textColor }}>
                   "{item.content}"
                 </p>
 
@@ -186,9 +197,9 @@ export default function WidgetDisplayClient({
                       </div>
                     )}
                     <div>
-                      <div className="font-bold text-ink-900 text-xs">{item.authorName}</div>
+                      <div className="font-bold text-xs" style={{ color: textColor }}>{item.authorName}</div>
                       {item.authorTitle && (
-                        <div className="text-[11px] text-ink-800/60 mt-0.5">
+                        <div className="text-[11px] opacity-70 mt-0.5" style={{ color: textColor }}>
                           {item.authorTitle}
                         </div>
                       )}

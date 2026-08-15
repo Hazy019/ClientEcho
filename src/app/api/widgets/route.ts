@@ -7,7 +7,7 @@ import { widgets, creators } from "@/db/schema";
 import { widgetSchema } from "@/lib/validation/schemas";
 import { checkDualRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeAndValidateCss } from "@/lib/security/css-sanitizer";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 
 // GET /api/widgets -> List creator's widgets & subscription state
 export async function GET() {
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         .returning();
     }
 
-    const isPro = creator.subscriptionStatus === "pro";
+    const isPro = ["pro", "active"].includes(creator.subscriptionStatus);
 
     // 3. Free Tier Active Widget Count Cap Enforcement
     const existingWidgets = await db
@@ -166,17 +166,25 @@ export async function POST(req: Request) {
     // 5. Scoped Custom CSS Sanitization & Free Trial Counter
     let finalCss = "";
     if (customCss && typeof customCss === "string" && customCss.trim().length > 0) {
-      const sanitized = sanitizeAndValidateCss(customCss);
-      if (!sanitized.valid) {
+      try {
+        const sanitized = sanitizeAndValidateCss(customCss);
+        if (!sanitized.valid) {
+          return NextResponse.json(
+            { error: sanitized.error || "Invalid Custom CSS format." },
+            { status: 400 }
+          );
+        }
+        finalCss = sanitized.sanitizedCss || "";
+      } catch (cssErr: any) {
+        console.error("CSS Sanitizer exception:", cssErr);
         return NextResponse.json(
-          { error: sanitized.error || "Invalid Custom CSS format." },
+          { error: "Malformed Custom CSS could not be parsed." },
           { status: 400 }
         );
       }
-      finalCss = sanitized.sanitizedCss || "";
 
       if (!isPro) {
-        if (creator.customCssTrialsUsed >= 3) {
+        if ((creator.customCssTrialsUsed || 0) >= 3) {
           return NextResponse.json(
             {
               error: "You have used all 3 free Custom CSS trial edits. Upgrade to Pro for unlimited CSS customization!",
@@ -189,7 +197,7 @@ export async function POST(req: Request) {
         // Increment customCssTrialsUsed atomically in DB
         await db
           .update(creators)
-          .set({ customCssTrialsUsed: sql`${creators.customCssTrialsUsed} + 1` })
+          .set({ customCssTrialsUsed: sql`COALESCE(${creators.customCssTrialsUsed}, 0) + 1` })
           .where(eq(creators.id, user.id));
       }
     }
@@ -212,7 +220,7 @@ export async function POST(req: Request) {
           isActive: data.isActive,
           updatedAt: new Date(),
         })
-        .where(eq(widgets.slug, data.slug))
+        .where(and(eq(widgets.slug, data.slug), eq(widgets.creatorId, user.id)))
         .returning();
 
       return NextResponse.json({ success: true, widget: updatedWidget });
@@ -232,6 +240,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, widget: newWidget });
   } catch (error: any) {
     console.error("Create widget error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Internal server error", details: String(error) },
+      { status: 500 }
+    );
   }
 }

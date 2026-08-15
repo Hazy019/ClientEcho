@@ -1,8 +1,11 @@
 "use client";
 
-import { Crown, Check, X, ArrowRight, ShieldCheck, Zap } from "lucide-react";
+import { useState } from "react";
+import { Crown, Check, X, ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
+
+import { PRO_PLAN } from "@/lib/config/pricing";
+import { Button } from "@/components/ui/Button";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -19,7 +22,29 @@ export default function UpgradeModal({
   featureName = "Pro Feature Access",
   description = "Unlock unlimited widgets, custom typography, accent colors, layout variants, and bulk approvals.",
 }: UpgradeModalProps) {
+  const [loading, setLoading] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleStartCheckout = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Failed to initiate Checkout session.");
+        setLoading(false);
+      }
+    } catch (err) {
+      alert("Network error starting checkout.");
+      setLoading(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -66,7 +91,7 @@ export default function UpgradeModal({
             </button>
           </div>
 
-          {/* Plan Comparison Snippet (Visual Rhyming with Landing Page) */}
+          {/* Plan Comparison Snippet */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
             {/* Free Plan */}
             <div className="bg-ink-800 p-5 rounded-2xl border border-surface-white/10 space-y-3">
@@ -101,7 +126,7 @@ export default function UpgradeModal({
                   Recommended
                 </span>
               </div>
-              <div className="font-display text-2xl font-extrabold">$19 <span className="text-xs font-mono font-normal text-ink-800/60">/ mo</span></div>
+              <div className="font-display text-2xl font-extrabold">{PRO_PLAN.priceDisplay} <span className="text-xs font-mono font-normal text-ink-800/60">/ mo</span></div>
               <ul className="space-y-2 text-ink-900 text-[11px] font-medium">
                 <li className="flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 text-ink-900" />
@@ -121,20 +146,24 @@ export default function UpgradeModal({
 
           {/* Action Controls */}
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-            <button
+            <Button
+              variant="ghost"
               onClick={onClose}
-              className="w-full sm:w-auto px-4 py-3 text-xs font-medium text-surface-white/70 hover:text-surface-white transition"
+              disabled={loading}
+              className="w-full sm:w-auto text-surface-white/70 hover:text-surface-white"
             >
               Maybe Later
-            </button>
-            <Link
-              href="/signup"
-              onClick={onClose}
-              className="w-full sm:w-auto px-6 py-3 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-bold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 group"
+            </Button>
+            <Button
+              variant="secondary"
+              loading={loading}
+              loadingText="Preparing Checkout..."
+              onClick={handleStartCheckout}
+              className="w-full sm:w-auto"
+              icon={<ArrowRight className="w-4 h-4" />}
             >
-              <span>Upgrade Workspace for $19/mo</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </Link>
+              Upgrade Workspace for {PRO_PLAN.priceDisplay}/mo
+            </Button>
           </div>
         </motion.div>
       </div>
