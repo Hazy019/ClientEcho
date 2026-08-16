@@ -451,7 +451,7 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-surface-white/60">
             <div className="flex items-center gap-3">
               <Image
-                src="/ClientEcho_logo.png"
+                src="/ClientEcho_logo_white.png"
                 alt="ClientEcho Logo"
                 width={24}
                 height={24}

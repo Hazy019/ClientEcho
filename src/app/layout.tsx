@@ -44,12 +44,22 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "ClientEcho — Zero-Friction Client Testimonials for Solo Creators & Agencies",
+    default: "ClientEcho",
     template: "%s | ClientEcho",
   },
   description:
     "ClientEcho enables solo creators, developers, and agencies to collect 1-click magic link approvals, import offline praise with hardcoded trust signals, and embed sandboxed widgets in minutes.",
   keywords: [
+    "kyrell santillan",
+    "Kyrell Santillan",
+    "Hazy",
+    "hazy",
+    "ClientEcho",
+    "clientecho",
+    "client echo",
+    "testimonial",
+    "testimonials",
+    "reviews",
     "client testimonials",
     "magic link approval",
     "social proof widget",
@@ -63,15 +73,19 @@ export const metadata: Metadata = {
   publisher: "ClientEcho Inc.",
   icons: {
     icon: [
-      { url: "/ClientEcho_logo.png", type: "image/png" },
-      { url: "/ClientEcho_logo.png", sizes: "32x32", type: "image/png" },
-      { url: "/ClientEcho_logo.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon-144x144.png", sizes: "144x144", type: "image/png" },
+      { url: "/favicon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: "/ClientEcho_logo.png",
-    apple: "/ClientEcho_logo.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
+  manifest: "/site.webmanifest",
   openGraph: {
-    title: "ClientEcho — Zero-Friction Client Testimonials",
+    title: "ClientEcho",
     description:
       "Gather & embed verified social proof without client friction. 1-click magic links, offline praise imports, and sandboxed widgets.",
     url: appUrl,
@@ -89,7 +103,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ClientEcho — Zero-Friction Client Testimonials",
+    title: "ClientEcho",
     description:
       "Gather & embed verified social proof without client friction. 1-click magic links, offline praise imports, and sandboxed widgets.",
     images: ["/ClientEcho_logo.png"],
@@ -105,6 +119,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "jurX14tSOTCPj1zMR21guSGjlv22Q17yRsd9fNjop5g",
+  },
   alternates: {
     canonical: appUrl,
   },
@@ -118,8 +135,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${syne.variable} ${manrope.variable} ${inter.variable} ${roboto.variable} ${outfit.variable}`}>
       <head>
-        <link rel="icon" href="/ClientEcho_logo.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/ClientEcho_logo.png" />
+        <meta name="google-site-verification" content="jurX14tSOTCPj1zMR21guSGjlv22Q17yRsd9fNjop5g" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-48x48.png" type="image/png" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className="antialiased font-sans bg-surface-white text-ink-900 selection:bg-ink-900 selection:text-surface-white">
         {children}
