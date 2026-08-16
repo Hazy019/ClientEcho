@@ -49,6 +49,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ valid: false, reason: "testimonial_not_found" }, { status: 404 });
     }
 
+    // Record openedAt timestamp in testimonial metadata if first time viewing
+    const meta = ((testimonial.metadata as Record<string, any>) || {});
+    if (!meta.openedAt) {
+      const nowIso = new Date().toISOString();
+      await db
+        .update(testimonials)
+        .set({
+          metadata: {
+            ...meta,
+            openedAt: nowIso,
+          },
+        })
+        .where(eq(testimonials.id, testimonial.id));
+    }
+
     return NextResponse.json({
       valid: true,
       testimonial: {

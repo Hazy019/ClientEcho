@@ -1,13 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Sparkles, Copy, Check, Code, Eye, Plus, Loader2, Star, Crown, Palette, Type, Layout, Code2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Sparkles,
+  Copy,
+  Check,
+  Code,
+  Eye,
+  Plus,
+  Loader2,
+  Star,
+  Crown,
+  Palette,
+  Type,
+  Layout,
+  Code2,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
+  RefreshCw,
+  Edit3,
+} from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import CustomSelect, { SelectOption } from "@/components/ui/CustomSelect";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 
 export const dynamic = "force-dynamic";
+
+function generateRandomSlug(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `portfolio-${result}`;
+}
 
 function getLuminance(hex: string): number {
   const cleanHex = hex.replace("#", "");
@@ -55,12 +86,24 @@ export default function WidgetsPage() {
   // Collapsible Starter Options State
   const [starterOpen, setStarterOpen] = useState(true);
 
-  // Free Tier State
+  // Free Tier State — initialized with a unique random slug to prevent multi-tenant collision
   const [name, setName] = useState("Default Portfolio Widget");
-  const [slug, setSlug] = useState("my-portfolio");
+  const [slug, setSlug] = useState(() => generateRandomSlug());
   const [cardStyle, setCardStyle] = useState<"border" | "glass" | "minimal">("border");
   const [showRating, setShowRating] = useState(true);
   const [showAvatar, setShowAvatar] = useState(true);
+
+  // Real-time Slug Availability Indicator State
+  const [slugStatus, setSlugStatus] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    message: string;
+    isOwner?: boolean;
+  }>({
+    checking: false,
+    available: null,
+    message: "",
+  });
 
   // Pro Tier State
   const [fontPairing, setFontPairing] = useState<"Syne" | "Manrope" | "Inter" | "Roboto" | "Outfit">("Manrope");
@@ -69,9 +112,42 @@ export default function WidgetsPage() {
   const [customCss, setCustomCss] = useState("");
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
 
   const isPro = subscriptionStatus === "pro";
+
+  const checkSlugAvailability = useCallback(async (slugToCheck: string) => {
+    const clean = slugToCheck.trim().toLowerCase();
+    if (clean.length < 3) {
+      setSlugStatus({
+        checking: false,
+        available: false,
+        message: "Slug must be at least 3 characters",
+      });
+      return;
+    }
+    setSlugStatus((prev) => ({ ...prev, checking: true }));
+    try {
+      const res = await fetch(`/api/widgets/check-slug?slug=${encodeURIComponent(clean)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setSlugStatus({
+          checking: false,
+          available: data.available,
+          message: data.message || (data.available ? "URL slug is available!" : "This slug is already taken."),
+          isOwner: data.isOwner,
+        });
+      } else {
+        setSlugStatus({
+          checking: false,
+          available: false,
+          message: data.error || "Slug is unavailable or invalid.",
+        });
+      }
+    } catch {
+      setSlugStatus({ checking: false, available: null, message: "" });
+    }
+  }, []);
 
   const fetchWidgets = async () => {
     setLoading(true);
@@ -153,7 +229,20 @@ export default function WidgetsPage() {
 
       if (res.ok && data.success) {
         showToast("Widget configuration saved & script generated!", "success");
+        setSlugStatus({
+          checking: false,
+          available: true,
+          message: `"${slug}" is your active widget URL.`,
+          isOwner: true,
+        });
         fetchWidgets();
+      } else if (res.status === 409) {
+        showToast(data.error || `The URL "${slug}" is already taken. Try a different one.`, "error");
+        setSlugStatus({
+          checking: false,
+          available: false,
+          message: data.error || "Slug collision detected. Please pick another URL.",
+        });
       } else if (res.status === 402 || data.code === "PRO_REQUIRED" || data.code === "LIMIT_REACHED") {
         triggerUpgrade(
           "Pro Subscription Required",
@@ -168,6 +257,43 @@ export default function WidgetsPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const loadWidgetToEdit = (widget: WidgetItem) => {
+    setName(widget.name);
+    setSlug(widget.slug);
+    setEditingWidgetId(widget.id);
+    const cfg = widget.themeConfig || {};
+    if (cfg.cardStyle) setCardStyle(cfg.cardStyle);
+    if (cfg.showRating !== undefined) setShowRating(cfg.showRating);
+    if (cfg.showAvatar !== undefined) setShowAvatar(cfg.showAvatar);
+    if (cfg.fontPairing) setFontPairing(cfg.fontPairing);
+    if (cfg.accentColor) setAccentColor(cfg.accentColor);
+    if (cfg.layoutVariant) setLayoutVariant(cfg.layoutVariant);
+    if (cfg.customCss !== undefined) setCustomCss(cfg.customCss);
+    setSlugStatus({
+      checking: false,
+      available: true,
+      message: `"${widget.slug}" is your active widget URL.`,
+      isOwner: true,
+    });
+    showToast(`Loaded "${widget.name}" into editor`, "info");
+  };
+
+  const handleNewWidget = () => {
+    const newSlug = generateRandomSlug();
+    setName("New Testimonial Widget");
+    setSlug(newSlug);
+    setEditingWidgetId(null);
+    setCardStyle("border");
+    setShowRating(true);
+    setShowAvatar(true);
+    setFontPairing("Manrope");
+    setAccentColor("#2D2D2D");
+    setLayoutVariant("grid");
+    setCustomCss("");
+    setSlugStatus({ checking: false, available: null, message: "" });
+    showToast("Ready to configure new widget", "info");
   };
 
   const getEmbedCode = (widgetSlug: string) => {
@@ -196,16 +322,31 @@ export default function WidgetsPage() {
           <span className="text-xs font-mono px-3 py-1.5 rounded-full bg-surface-white border border-ink-900/10 text-ink-900 font-semibold shadow-xs">
             Plan: {isPro ? "Pro Workspace (Unlimited)" : "Starter Free (1 Widget Cap)"}
           </span>
+          <button
+            type="button"
+            onClick={handleNewWidget}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 text-surface-white hover:bg-ink-800 rounded-full text-xs font-semibold transition shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Widget</span>
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Form Configurator */}
         <div className="bg-surface-white p-6 sm:p-8 rounded-3xl border border-ink-900/10 shadow-sm space-y-6">
-          <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-ink-900" />
-            <span>Widget Styling Configuration</span>
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-ink-900" />
+              <span>{editingWidgetId ? "Edit Widget Styling" : "Widget Styling Configuration"}</span>
+            </h2>
+            {editingWidgetId && (
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-800 border border-emerald-500/30 rounded font-semibold">
+                Editing Existing
+              </span>
+            )}
+          </div>
 
           <form onSubmit={handleSaveWidget} className="space-y-6">
             {/* Starter Tier Collapsible Section */}
@@ -235,16 +376,80 @@ export default function WidgetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1">
-                      Embed Slug (Unique Identifier)
-                    </label>
-                    <input
-                      type="text"
-                      value={slug}
-                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                      className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-xs font-mono focus:outline-none focus:border-ink-900"
-                      required
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider">
+                        Embed Slug (Unique Identifier)
+                      </label>
+                      {slugStatus.checking ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-ink-800/60">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Checking...</span>
+                        </span>
+                      ) : slugStatus.available === true ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-700 font-semibold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>{slugStatus.isOwner ? "Your URL" : "Available"}</span>
+                        </span>
+                      ) : slugStatus.available === false ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-rose-700 font-semibold">
+                          <XCircle className="w-3 h-3 text-rose-600" />
+                          <span>Already taken</span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={slug}
+                          onBlur={() => checkSlugAvailability(slug)}
+                          onChange={(e) => {
+                            const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                            setSlug(val);
+                            if (slugStatus.available !== null) {
+                              setSlugStatus({ checking: false, available: null, message: "" });
+                            }
+                          }}
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-mono focus:outline-none transition ${
+                            slugStatus.available === true
+                              ? "border-emerald-500 bg-emerald-500/5 focus:border-emerald-600"
+                              : slugStatus.available === false
+                              ? "border-rose-500 bg-rose-500/5 focus:border-rose-600"
+                              : "border-ink-900/20 focus:border-ink-900"
+                          }`}
+                          placeholder="portfolio-a8f9x2"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const freshSlug = generateRandomSlug();
+                          setSlug(freshSlug);
+                          checkSlugAvailability(freshSlug);
+                        }}
+                        title="Generate random unique slug"
+                        className="px-3 py-2.5 bg-surface-light hover:bg-ink-900/5 text-ink-900 border border-ink-900/10 rounded-xl text-xs font-mono font-medium transition flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-ink-800/60" />
+                        <span className="hidden sm:inline">Randomize</span>
+                      </button>
+                    </div>
+
+                    {slugStatus.message && (
+                      <p
+                        className={`text-[11px] mt-1 font-mono ${
+                          slugStatus.available === true
+                            ? "text-emerald-700"
+                            : slugStatus.available === false
+                            ? "text-rose-600 font-semibold"
+                            : "text-ink-800/60"
+                        }`}
+                      >
+                        {slugStatus.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -554,12 +759,17 @@ export default function WidgetsPage() {
                   </div>
                 </div>
 
-                <span
-                  className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded text-surface-white"
+                <a
+                  href="/verify/preview-demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Click to view live public verification page preview"
+                  className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded text-surface-white hover:opacity-90 transition inline-flex items-center gap-1 cursor-pointer shadow-xs"
                   style={{ backgroundColor: accentColor }}
                 >
-                  Verified & Approved
-                </span>
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Verified & Approved</span>
+                </a>
               </div>
             </div>
           </div>
@@ -594,25 +804,45 @@ export default function WidgetsPage() {
               widgets.map((widget) => (
                 <div
                   key={widget.id}
-                  className="bg-ink-900 text-surface-white p-5 rounded-2xl shadow-sm space-y-3 border border-ink-800"
+                  className={`bg-ink-900 text-surface-white p-5 rounded-2xl shadow-sm space-y-3 border transition ${
+                    editingWidgetId === widget.id ? "border-emerald-500 ring-1 ring-emerald-500" : "border-ink-800"
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-display font-bold text-surface-white text-sm">
-                        {widget.name}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-display font-bold text-surface-white text-sm">
+                          {widget.name}
+                        </h4>
+                        {editingWidgetId === widget.id && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">
+                            Editing
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[11px] text-surface-white/60 font-mono">
                         slug: {widget.slug}
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => handleCopy(widget.slug, widget.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-white text-ink-900 hover:bg-surface-light rounded-lg text-xs font-semibold transition"
-                    >
-                      {copiedId === widget.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedId === widget.id ? "Copied!" : "Copy Embed"}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => loadWidgetToEdit(widget)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white rounded-lg text-xs font-semibold transition"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(widget.slug, widget.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-white text-ink-900 hover:bg-surface-light rounded-lg text-xs font-semibold transition"
+                      >
+                        {copiedId === widget.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedId === widget.id ? "Copied!" : "Copy"}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <pre className="bg-ink-800 p-3 rounded-xl font-mono text-[11px] text-surface-white/90 overflow-x-auto border border-surface-white/10 whitespace-pre-wrap">

@@ -239,23 +239,41 @@ export default function TestimonialsModerationPage() {
   const renderSourceBadge = (item: TestimonialItem) => {
     if (item.source === "magic_link") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-ink-900 text-surface-white">
+        <a
+          href={`/verify/${item.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open Public Verification Page"
+          className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-ink-900 text-surface-white hover:bg-ink-800 transition cursor-pointer"
+        >
           <ShieldCheck className="w-3 h-3" />
           <span>Verified & Approved</span>
-        </span>
+        </a>
       );
     }
     if (item.source === "public_form") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-ink-800 text-ink-900">
+        <a
+          href={`/verify/${item.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open Public Verification Page"
+          className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-ink-800 text-ink-900 hover:bg-surface-light transition cursor-pointer"
+        >
           <span>Verified Direct Submission</span>
-        </span>
+        </a>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-surface-light border border-ink-800/20 text-ink-800">
+      <a
+        href={`/verify/${item.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open Public Verification Page"
+        className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-surface-light border border-ink-800/20 text-ink-800 hover:bg-surface-light/80 transition cursor-pointer"
+      >
         <span>Self-Reported / Imported</span>
-      </span>
+      </a>
     );
   };
 

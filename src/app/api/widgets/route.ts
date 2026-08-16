@@ -61,6 +61,7 @@ export async function GET() {
 
 // POST /api/widgets -> Create or update widget with Pro paywall enforcement & CSS trial counter
 export async function POST(req: Request) {
+  let body: any = null;
   try {
     const supabase = createClient();
     const {
@@ -83,7 +84,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
     const validation = widgetSchema.safeParse(body);
 
     if (!validation.success) {
@@ -116,13 +121,29 @@ export async function POST(req: Request) {
 
     const isPro = ["pro", "active"].includes(creator.subscriptionStatus);
 
-    // 3. Free Tier Active Widget Count Cap Enforcement
+    // 3. Multi-Tenant Slug Ownership & Free Tier Cap Enforcement
+    const [slugOwner] = await db
+      .select({ id: widgets.id, creatorId: widgets.creatorId, slug: widgets.slug })
+      .from(widgets)
+      .where(eq(widgets.slug, data.slug));
+
+    const isUpdatingSameSlug = Boolean(slugOwner && slugOwner.creatorId === user.id);
+
+    // If slug is owned by a DIFFERENT creator, reject with a 409 conflict
+    if (slugOwner && slugOwner.creatorId !== user.id) {
+      return NextResponse.json(
+        {
+          error: `The URL "${data.slug}" is already taken. Try a different one.`,
+          field: "slug",
+        },
+        { status: 409 }
+      );
+    }
+
     const existingWidgets = await db
       .select()
       .from(widgets)
       .where(eq(widgets.creatorId, user.id));
-
-    const isUpdatingSameSlug = existingWidgets.some((w) => w.slug === data.slug);
 
     if (!isPro && existingWidgets.length >= 1 && !isUpdatingSameSlug) {
       return NextResponse.json(
@@ -239,9 +260,22 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, widget: newWidget });
   } catch (error: any) {
-    console.error("Create widget error:", error);
+    if (
+      error?.code === "23505" ||
+      error?.constraint === "widgets_slug_key" ||
+      (typeof error?.message === "string" && error.message.includes("widgets_slug_key"))
+    ) {
+      return NextResponse.json(
+        {
+          error: `The URL "${body?.slug || "chosen"}" is already taken. Try a different one.`,
+          field: "slug",
+        },
+        { status: 409 }
+      );
+    }
+    console.error("Widget save error:", error);
     return NextResponse.json(
-      { error: error.message || "Internal server error", details: String(error) },
+      { error: "Something went wrong saving your widget." },
       { status: 500 }
     );
   }

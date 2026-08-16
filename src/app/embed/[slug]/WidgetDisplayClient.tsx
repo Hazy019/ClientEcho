@@ -206,23 +206,39 @@ export default function WidgetDisplayClient({
                     </div>
                   </div>
 
-                  {/* Standardized Trust Badges */}
+                  {/* Standardized Clickable Trust Verification Badges */}
                   {item.isImportedSelfReported || item.source === "manual_import" ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-light border border-ink-800/20 text-ink-800">
+                    <a
+                      href={`/verify/${item.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View public verification record"
+                      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-light border border-ink-800/20 text-ink-800 hover:bg-ink-800/10 hover:border-ink-800/40 transition cursor-pointer"
+                    >
                       [Self-Reported / Imported]
-                    </span>
+                    </a>
                   ) : item.source === "magic_link" ? (
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-surface-white"
+                    <a
+                      href={`/verify/${item.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View public cryptographic verification record"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-surface-white hover:opacity-90 hover:scale-105 transition transform cursor-pointer shadow-xs"
                       style={{ backgroundColor: accentColor }}
                     >
                       <ShieldCheck className="w-3 h-3" />
                       <span>Verified & Approved</span>
-                    </span>
+                    </a>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold border border-ink-800 text-ink-900">
+                    <a
+                      href={`/verify/${item.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View public verification record"
+                      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold border border-ink-800 text-ink-900 hover:bg-ink-900 hover:text-surface-white transition cursor-pointer"
+                    >
                       Verified Direct Submission
-                    </span>
+                    </a>
                   )}
                 </div>
               </div>

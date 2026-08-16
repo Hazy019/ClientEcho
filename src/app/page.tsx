@@ -218,34 +218,38 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 5. Security & RLS Section */}
+        {/* 5. Security & Verification Section */}
         <section id="trust" className="bg-surface-light py-20 px-6 border-t border-ink-900/10 scroll-mt-24">
           <div className="max-w-7xl mx-auto space-y-8 text-center">
-            <ScrollReveal className="space-y-3 max-w-2xl mx-auto">
-              <h2 className="font-display text-3xl font-bold text-ink-900">
-                Security & RLS Architecture
+            <ScrollReveal className="space-y-3 max-w-3xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono bg-ink-900 text-surface-white">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Flagship Trust Engine</span>
+              </div>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-ink-900">
+                Every Testimonial Is Publicly Verifiable
               </h2>
-              <p className="text-ink-800/70 text-sm leading-relaxed">
-                Enterprise-grade PostgreSQL Row-Level Security, Turnstile bot detection, and PCI-compliant Stripe billing.
+              <p className="text-ink-800/80 text-sm sm:text-base leading-relaxed">
+                Click any badge across our sandboxed widgets to inspect an immutable public audit trail showing exactly when each testimonial was dispatched, opened, and cryptographically signed.
               </p>
             </ScrollReveal>
 
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <div className="px-5 py-3 rounded-2xl bg-surface-white border border-ink-900/10 text-ink-900 text-xs font-mono font-semibold flex items-center gap-2.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-ink-900" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Public Verification Audit Pages (/verify/[id])</span>
+              </div>
+              <div className="px-5 py-3 rounded-2xl bg-surface-white border border-ink-900/10 text-ink-900 text-xs font-mono font-semibold flex items-center gap-2.5 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>Postgres Row-Level Security (RLS) Enforced</span>
               </div>
               <div className="px-5 py-3 rounded-2xl bg-surface-white border border-ink-900/10 text-ink-900 text-xs font-mono font-semibold flex items-center gap-2.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-ink-900" />
-                <span>Stripe-Secured Subscription Billing</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Zero-Password Single-Use Magic Link Tokens</span>
               </div>
               <div className="px-5 py-3 rounded-2xl bg-surface-white border border-ink-900/10 text-ink-900 text-xs font-mono font-semibold flex items-center gap-2.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-ink-900" />
-                <span>Upstash Dual Rate Limiting</span>
-              </div>
-              <div className="px-5 py-3 rounded-2xl bg-surface-white border border-ink-900/10 text-ink-900 text-xs font-mono font-semibold flex items-center gap-2.5 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-ink-900" />
-                <span>Immutable Admin Audit Trail</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Upstash Dual Rate Limiting & Bot Protection</span>
               </div>
             </div>
           </div>
@@ -416,12 +420,13 @@ export default function HomePage() {
                 <div className="bg-surface-light p-6 rounded-2xl border border-ink-900/10 space-y-2">
                   <h3 className="font-display font-bold text-lg text-ink-900 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-ink-900 flex-shrink-0" />
-                    <span>What do the three trust verification badges mean?</span>
+                    <span>What do the three trust verification badges mean, and are they clickable?</span>
                   </h3>
                   <p className="text-xs sm:text-sm text-ink-800/80 leading-relaxed">
-                    <strong>1. Verified Magic Link</strong> indicates 1-click cryptographic approval by the client.<br />
-                    <strong>2. Verified Submission</strong> indicates submission via an active public form with Cloudflare Turnstile bot protection.<br />
-                    <strong>3. Self-Reported / Imported</strong> indicates manual praise imported by the creator (Slack, email screenshots).
+                    Yes! Clicking any badge opens its permanent public verification audit trail at <code className="font-mono text-xs bg-surface-white px-1.5 py-0.5 rounded border border-ink-900/10">/verify/[id]</code>:<br />
+                    <strong>1. Verified Magic Link:</strong> Independently authenticated via single-use cryptographic token with full dispatched, opened, and approved timestamps.<br />
+                    <strong>2. Verified Direct Submission:</strong> Ingested through active public forms with Cloudflare Turnstile bot verification.<br />
+                    <strong>3. Self-Reported / Imported:</strong> Transparently marked manual imports entered by the creator, ensuring total honesty in social proof.
                   </p>
                 </div>
               </ScrollReveal>

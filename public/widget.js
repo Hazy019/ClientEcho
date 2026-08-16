@@ -19,8 +19,8 @@
 
   const iframe = document.createElement("iframe");
   iframe.src = `${widgetHost}/embed/${encodeURIComponent(widgetSlug)}`;
-  // Strict sandboxing: allow-scripts and allow-same-origin ONLY for iframe execution
-  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+  // Strict sandboxing: allow-scripts, allow-same-origin, and allow-popups for verification page links
+  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
   iframe.style.width = "100%";
   iframe.style.height = "350px";
   iframe.style.border = "none";
