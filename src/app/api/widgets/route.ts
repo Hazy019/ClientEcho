@@ -7,6 +7,7 @@ import { widgets, creators } from "@/db/schema";
 import { widgetSchema } from "@/lib/validation/schemas";
 import { checkDualRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeAndValidateCss } from "@/lib/security/css-sanitizer";
+import { logger } from "@/lib/logger";
 import { eq, sql, and } from "drizzle-orm";
 
 // GET /api/widgets -> List creator's widgets & subscription state
@@ -140,51 +141,29 @@ export async function POST(req: Request) {
       );
     }
 
+    // 3. Flat Workspace Widget Cap (1 active widget limit for all workspaces)
     const existingWidgets = await db
       .select()
       .from(widgets)
       .where(eq(widgets.creatorId, user.id));
 
-    if (!isPro && existingWidgets.length >= 1 && !isUpdatingSameSlug) {
+    if (existingWidgets.length >= 1 && !isUpdatingSameSlug) {
       return NextResponse.json(
         {
-          error: "Free Starter plan is limited to 1 active widget. Upgrade to Pro for unlimited widgets!",
+          error: "Your workspace is currently limited to 1 active widget.",
           code: "LIMIT_REACHED",
         },
-        { status: 402 }
+        { status: 400 }
       );
     }
 
-    // 4. Pro Fields Gating Enforcement
+    // 4. Customization Fields (Fully unlocked for all workspaces during billing pause)
     const fontPairing = themeConfig.fontPairing || "Manrope";
     const accentColor = themeConfig.accentColor || "#2D2D2D";
     const layoutVariant = themeConfig.layoutVariant || "grid";
     const customCss = themeConfig.customCss || "";
 
-    if (!isPro) {
-      if (["Syne", "Roboto", "Outfit"].includes(fontPairing)) {
-        return NextResponse.json(
-          { error: "Custom typography overrides require a Pro Workspace plan.", code: "PRO_REQUIRED" },
-          { status: 402 }
-        );
-      }
-
-      if (accentColor !== "#2D2D2D" && accentColor !== "#4f46e5") {
-        return NextResponse.json(
-          { error: "Accent color customization requires a Pro Workspace plan.", code: "PRO_REQUIRED" },
-          { status: 402 }
-        );
-      }
-
-      if (layoutVariant !== "grid") {
-        return NextResponse.json(
-          { error: "Carousel and Rotator widget layouts require a Pro Workspace plan.", code: "PRO_REQUIRED" },
-          { status: 402 }
-        );
-      }
-    }
-
-    // 5. Scoped Custom CSS Sanitization & Free Trial Counter
+    // 5. Scoped Custom CSS Sanitization (Security check applies to all users)
     let finalCss = "";
     if (customCss && typeof customCss === "string" && customCss.trim().length > 0) {
       try {
@@ -203,31 +182,13 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-
-      if (!isPro) {
-        if ((creator.customCssTrialsUsed || 0) >= 3) {
-          return NextResponse.json(
-            {
-              error: "You have used all 3 free Custom CSS trial edits. Upgrade to Pro for unlimited CSS customization!",
-              code: "PRO_REQUIRED",
-            },
-            { status: 402 }
-          );
-        }
-
-        // Increment customCssTrialsUsed atomically in DB
-        await db
-          .update(creators)
-          .set({ customCssTrialsUsed: sql`COALESCE(${creators.customCssTrialsUsed}, 0) + 1` })
-          .where(eq(creators.id, user.id));
-      }
     }
 
     const sanitizedThemeConfig = {
       ...themeConfig,
-      fontPairing: isPro ? fontPairing : fontPairing === "Inter" ? "Inter" : "Manrope",
-      accentColor: isPro ? accentColor : "#2D2D2D",
-      layoutVariant: isPro ? layoutVariant : "grid",
+      fontPairing,
+      accentColor,
+      layoutVariant,
       customCss: finalCss,
     };
 
@@ -273,7 +234,7 @@ export async function POST(req: Request) {
         { status: 409 }
       );
     }
-    console.error("Widget save error:", error);
+    logger.error("Widget save error", error, { route: "/api/widgets", slug: body?.slug });
     return NextResponse.json(
       { error: "Something went wrong saving your widget." },
       { status: 500 }

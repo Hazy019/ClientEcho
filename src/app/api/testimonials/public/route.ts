@@ -8,6 +8,7 @@ import { publicFormSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "@/lib/security/sanitizer";
 import { checkDualRateLimit } from "@/lib/security/rate-limit";
 import { validateVideoUrl } from "@/lib/security/video-url";
+import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
       id: inserted.id,
     });
   } catch (error: any) {
-    console.error("Public testimonial submission error:", error);
+    logger.error("Public testimonial submission error", error, { route: "/api/testimonials/public" });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

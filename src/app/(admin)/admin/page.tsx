@@ -129,21 +129,21 @@ export default async function TechAdminDashboardPage() {
             </div>
           </div>
 
-          {/* Card 3: Stripe Webhook Status */}
+          {/* Card 3: Billing Subsystem Status */}
           <div className="bg-ink-800 p-4 md:p-5 rounded-2xl border border-surface-white/10 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-[10px] font-mono font-semibold text-surface-white/50 uppercase tracking-wider">
-                Stripe Billing
+                Billing Subsystem
               </div>
               <div className="w-7 h-7 rounded-lg bg-surface-white/8 flex items-center justify-center">
                 <DollarSign className="w-3.5 h-3.5 text-surface-white/60" />
               </div>
             </div>
-            <div className={`font-display text-xl font-bold ${stripeConnected ? "text-emerald-400" : "text-rose-400"}`}>
-              {stripeConnected ? "Connected" : "Not Set"}
+            <div className="font-display text-xl font-bold text-amber-400">
+              Paused
             </div>
             <div className="text-[10px] text-surface-white/40 font-mono">
-              {stripeConnected ? "Webhook listener active" : "STRIPE_SECRET_KEY missing"}
+              Flat free tier active &middot; Webhooks dormant
             </div>
           </div>
 

@@ -74,13 +74,9 @@ export default function BillingPage() {
           </p>
         </div>
 
-        <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-wide uppercase ${
-          isPro
-            ? "bg-ink-900 text-surface-white"
-            : "bg-surface-white text-ink-900 border border-ink-900/20"
-        }`}>
-          {isPro ? <Crown className="w-4 h-4" /> : <Zap className="w-4 h-4 text-ink-900" />}
-          <span>{isPro ? "Pro Workspace" : "Starter Free Plan"}</span>
+        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-wide uppercase bg-surface-white text-ink-900 border border-ink-900/20">
+          <Zap className="w-4 h-4 text-ink-900" />
+          <span>Standard Workspace</span>
         </span>
       </div>
 
@@ -134,6 +130,17 @@ export default function BillingPage() {
         </div>
       ) : (
         <div className="space-y-8">
+          {/* Billing Notice Banner */}
+          <div className="p-5 bg-surface-white rounded-3xl border border-ink-900/10 shadow-sm space-y-2">
+            <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase text-ink-900">
+              <ShieldCheck className="w-4 h-4 text-ink-900" />
+              <span>Billing Status: Paused (Free All-Features Access)</span>
+            </div>
+            <p className="text-xs text-ink-800/70 leading-relaxed">
+              Paid subscriptions are currently paused. All workspaces have complete access to custom typography, widget accent colors, carousel & rotator layouts, and custom CSS without subscription fees.
+            </p>
+          </div>
+
           {/* Plan Usage & Capability Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Widget Limit Meter */}
@@ -143,19 +150,17 @@ export default function BillingPage() {
                   Active Widget Limit
                 </span>
                 <span className="text-xs font-mono font-bold text-ink-900">
-                  {widgetCount} of {isPro ? "Unlimited" : "1 Limit"}
+                  {widgetCount} of 1 Cap
                 </span>
               </div>
               <div className="w-full bg-surface-light h-3 rounded-full overflow-hidden border border-ink-900/10">
                 <div
                   className="bg-ink-900 h-full transition-all duration-300"
-                  style={{ width: isPro ? "25%" : `${Math.min(100, (widgetCount / 1) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (widgetCount / 1) * 100)}%` }}
                 />
               </div>
               <p className="text-xs text-ink-800/70 leading-relaxed">
-                {isPro
-                  ? "Pro workspaces can create and embed unlimited widgets across client sites."
-                  : "Starter Free plan is limited to 1 active widget. Upgrade to Pro for unlimited scale."}
+                Standard workspaces can configure and embed 1 live active testimonial widget at a time.
               </p>
             </div>
 
@@ -166,19 +171,17 @@ export default function BillingPage() {
                   Approved Testimonials
                 </span>
                 <span className="text-xs font-mono font-bold text-ink-900">
-                  {testimonialCount} of {isPro ? "Unlimited" : "25 Limit"}
+                  {testimonialCount} of 25 Cap
                 </span>
               </div>
               <div className="w-full bg-surface-light h-3 rounded-full overflow-hidden border border-ink-900/10">
                 <div
                   className="bg-ink-900 h-full transition-all duration-300"
-                  style={{ width: isPro ? "20%" : `${Math.min(100, (testimonialCount / 25) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (testimonialCount / 25) * 100)}%` }}
                 />
               </div>
               <p className="text-xs text-ink-800/70 leading-relaxed">
-                {isPro
-                  ? "Pro workspaces enjoy unlimited testimonial moderation and magic link approvals."
-                  : "Starter Free plan allows up to 25 approved testimonials."}
+                Up to 25 approved testimonials per workspace across 1-click magic links, public forms, and manual imports.
               </p>
             </div>
           </div>
@@ -188,30 +191,20 @@ export default function BillingPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink-900/10 pb-6">
               <div>
                 <h2 className="font-display text-xl font-bold text-ink-900">
-                  {isPro ? `Pro Workspace Subscription (${PRO_PLAN.priceDisplay}/mo)` : "Starter Free Plan ($0/forever)"}
+                  ClientEcho Standard Plan ($0 / forever)
                 </h2>
                 <p className="text-xs text-ink-800/70 mt-1">
-                  {isPro
-                    ? "Billed monthly via Stripe. Cancel or update payment method anytime."
-                    : "Ideal for testing magic link approvals and public submission forms."}
+                  Full access to magic link verification, verification seals, and custom widget styling.
                 </p>
               </div>
 
-              {isPro ? (
+              {isPro && (
                 <button
                   onClick={handleManageStripePortal}
                   className="px-5 py-2.5 bg-ink-900 hover:bg-ink-800 text-surface-white text-xs font-semibold rounded-xl transition shadow-sm inline-flex items-center gap-2"
                 >
-                  <span>Manage Subscription</span>
+                  <span>Manage Billing Portal</span>
                   <ExternalLink className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="px-5 py-2.5 bg-ink-900 hover:bg-ink-800 text-surface-white text-xs font-semibold rounded-xl transition shadow-sm inline-flex items-center gap-2"
-                >
-                  <Crown className="w-4 h-4" />
-                  <span>Upgrade to Pro ({PRO_PLAN.priceDisplay}/mo)</span>
                 </button>
               )}
             </div>
@@ -236,18 +229,14 @@ export default function BillingPage() {
                 <div className="w-5 h-5 bg-ink-900 text-surface-white rounded-lg flex items-center justify-center flex-shrink-0">
                   <Check className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-ink-900 font-medium">
-                  {isPro ? "Unlimited Active Widgets" : "1 Active Widget Cap"}
-                </span>
+                <span className="text-ink-900 font-medium">Custom Typography, Colors & Layout Variants</span>
               </div>
 
               <div className="flex items-center gap-2.5">
                 <div className="w-5 h-5 bg-ink-900 text-surface-white rounded-lg flex items-center justify-center flex-shrink-0">
                   <Check className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-ink-900 font-medium">
-                  {isPro ? "Remove ClientEcho Branding" : "ClientEcho Footer Branding Included"}
-                </span>
+                <span className="text-ink-900 font-medium">Dedicated Verification Pages & Trust Badges</span>
               </div>
             </div>
           </div>
@@ -255,20 +244,11 @@ export default function BillingPage() {
           <div className="p-4 bg-surface-light rounded-2xl border border-ink-900/10 text-xs font-mono text-ink-800/70 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-ink-900 flex-shrink-0" />
             <span>
-              All payment transactions are handled securely via PCI-compliant Stripe Checkout and Customer Portal. ClientEcho never stores raw credit card details.
+              All transactions remain PCI-compliant via Stripe integration. No subscription charges will occur while billing is paused.
             </span>
           </div>
         </div>
       )}
-
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        title="Upgrade to Pro Workspace Plan"
-        featureName="Unlimited Widgets & Pro Features"
-        description="Unlock unlimited widgets, remove ClientEcho branding, custom Google Fonts, accent colors, and carousel presentation layouts for $19/month."
-      />
     </div>
   );
 }

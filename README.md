@@ -105,8 +105,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Database Connection
-DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
+# Database Connection (IMPORTANT: In serverless / production Vercel environments, use Supabase Transaction Pooler port 6543)
+DATABASE_URL=postgresql://postgres.your-project-ref:password@aws-0-region.pooler.supabase.com:6543/postgres?pgbouncer=true
+# (Direct connection port 5432 should only be used for migrations/local dev, NOT production serverless)
 
 # Upstash Redis Rate Limiting & Cache
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io

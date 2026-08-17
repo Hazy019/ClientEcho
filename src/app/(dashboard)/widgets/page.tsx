@@ -184,21 +184,12 @@ export default function WidgetsPage() {
   const handleSaveWidget = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Client-side pre-validation for Free tier limits
-    if (!isPro && widgets.length >= 1 && !widgets.some((w) => w.slug === slug)) {
-      triggerUpgrade(
-        "1 Active Widget Cap Reached",
-        "Free Plan Widget Limit",
-        "Starter Free workspaces are limited to 1 active testimonial widget. Upgrade to Pro for unlimited widgets!"
-      );
-      return;
-    }
-
-    if (!isPro && customCss.trim().length > 0 && customCssTrialsUsed >= 3) {
-      triggerUpgrade(
-        "Custom CSS Trial Limit Exhausted",
-        "3 Free Custom CSS Trials Used",
-        "You have used all 3 free Custom CSS trial edits. Upgrade to Pro for unlimited custom CSS customization!"
+    // Client-side pre-validation for Workspace limits
+    if (widgets.length >= 1 && !widgets.some((w) => w.slug === slug)) {
+      showToast(
+        "Your workspace is limited to 1 active widget. You can edit your existing widget or update its slug.",
+        "info",
+        "Widget Limit Reached"
       );
       return;
     }
@@ -320,7 +311,7 @@ export default function WidgetsPage() {
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono px-3 py-1.5 rounded-full bg-surface-white border border-ink-900/10 text-ink-900 font-semibold shadow-xs">
-            Plan: {isPro ? "Pro Workspace (Unlimited)" : "Starter Free (1 Widget Cap)"}
+            Workspace Limit: {widgets.length} / 1 Active Widget
           </span>
           <button
             type="button"
@@ -501,15 +492,15 @@ export default function WidgetsPage() {
               )}
             </div>
 
-            {/* Pro Tier Section with Gating */}
+            {/* Styling & Customization Options */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between pb-1 border-b border-ink-900/10">
                 <div className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900 flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5 text-ink-900" />
-                  <span>Pro Tier Customizations</span>
+                  <Sparkles className="w-3.5 h-3.5 text-ink-900" />
+                  <span>Widget Styling & Layouts</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-ink-900 text-surface-white rounded">
-                  PRO
+                <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 bg-surface-light border border-ink-900/10 text-ink-800 rounded">
+                  All Options Unlocked
                 </span>
               </div>
 
@@ -520,27 +511,17 @@ export default function WidgetsPage() {
                     <Type className="w-3.5 h-3.5 text-ink-800/60" />
                     <span>Typography Override</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-surface-light border border-ink-800/20 text-ink-800 rounded font-bold">
-                    PRO
-                  </span>
                 </label>
                 <CustomSelect
                   options={[
-                    { value: "Manrope", label: "Manrope (Clean Modern Sans - Starter)" },
-                    { value: "Inter", label: "Inter (Neutral Precision - Starter)" },
-                    { value: "Syne", label: "Syne (Bold Geometric Display - Pro)", disabled: !isPro, disabledBadge: "PRO" },
-                    { value: "Roboto", label: "Roboto (Classic Sans - Pro)", disabled: !isPro, disabledBadge: "PRO" },
-                    { value: "Outfit", label: "Outfit (High Contrast Premium - Pro)", disabled: !isPro, disabledBadge: "PRO" },
+                    { value: "Manrope", label: "Manrope (Clean Modern Sans)" },
+                    { value: "Inter", label: "Inter (Neutral Precision)" },
+                    { value: "Syne", label: "Syne (Bold Geometric Display)" },
+                    { value: "Roboto", label: "Roboto (Classic Sans)" },
+                    { value: "Outfit", label: "Outfit (High Contrast Premium)" },
                   ]}
                   value={fontPairing}
                   onChange={(val) => setFontPairing(val as any)}
-                  onDisabledSelect={(opt) => {
-                    triggerUpgrade(
-                      "Pro Typography",
-                      "Custom Font Pairings",
-                      "Syne, Roboto, and Outfit typography overrides require a Pro Workspace plan."
-                    );
-                  }}
                 />
               </div>
 
@@ -551,25 +532,12 @@ export default function WidgetsPage() {
                     <Palette className="w-3.5 h-3.5 text-ink-800/60" />
                     <span>Widget Accent Color</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-surface-light border border-ink-800/20 text-ink-800 rounded font-bold">
-                    PRO
-                  </span>
                 </label>
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
                     value={accentColor}
-                    onChange={(e) => {
-                      if (!isPro) {
-                        triggerUpgrade(
-                          "Pro Color Customization",
-                          "Custom Accent Colors",
-                          "Custom rating stars and verification badge colors require a Pro Workspace plan."
-                        );
-                        return;
-                      }
-                      setAccentColor(e.target.value);
-                    }}
+                    onChange={(e) => setAccentColor(e.target.value)}
                     className="w-10 h-10 rounded-xl border border-ink-900/20 cursor-pointer p-1 bg-surface-white"
                   />
                   <input
@@ -604,26 +572,13 @@ export default function WidgetsPage() {
                     <Layout className="w-3.5 h-3.5 text-ink-800/60" />
                     <span>Layout Variant</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-surface-light border border-ink-800/20 text-ink-800 rounded font-bold">
-                    PRO
-                  </span>
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {(["grid", "carousel", "rotator"] as const).map((variant) => (
                     <button
                       key={variant}
                       type="button"
-                      onClick={() => {
-                        if (!isPro && variant !== "grid") {
-                          triggerUpgrade(
-                            "Pro Layout Variants",
-                            "Carousel & Rotator Layouts",
-                            "Carousel and Single-Quote Rotator presentation modes require a Pro Workspace plan."
-                          );
-                          return;
-                        }
-                        setLayoutVariant(variant);
-                      }}
+                      onClick={() => setLayoutVariant(variant)}
                       className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition flex items-center justify-center gap-1 ${
                         layoutVariant === variant
                           ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
@@ -636,23 +591,16 @@ export default function WidgetsPage() {
                 </div>
               </div>
 
-              {/* Custom CSS Injection with 3-Trial Counter */}
+              {/* Custom CSS Injection */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider flex items-center gap-1">
                     <Code2 className="w-3.5 h-3.5 text-ink-800/60" />
                     <span>Scoped Custom CSS</span>
                   </label>
-
-                  {!isPro ? (
-                    <span className="text-[10px] font-mono text-ink-800/70 bg-surface-light px-2 py-0.5 rounded border border-ink-800/20 font-semibold">
-                      {Math.max(0, 3 - customCssTrialsUsed)} of 3 free trial edits remaining
-                    </span>
-                  ) : (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 bg-ink-900 text-surface-white rounded font-bold uppercase">
-                      Unlimited PRO
-                    </span>
-                  )}
+                  <span className="text-[10px] font-mono text-ink-800/60 bg-surface-light px-2 py-0.5 rounded border border-ink-800/10">
+                    Scoped to widget
+                  </span>
                 </div>
 
                 <textarea

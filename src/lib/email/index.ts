@@ -1,7 +1,29 @@
 import { Resend } from "resend";
+import { logger } from "@/lib/logger";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 export const resend = resendApiKey ? new Resend(resendApiKey) : null;
+
+function handleEmailSendError(err: any, context: string, recipient: string) {
+  const errMsg = err?.message || String(err);
+  const isRateLimited =
+    err?.statusCode === 429 ||
+    errMsg.toLowerCase().includes("rate limit") ||
+    errMsg.toLowerCase().includes("quota") ||
+    errMsg.toLowerCase().includes("daily");
+
+  if (isRateLimited) {
+    logger.error(`[RESEND_QUOTA_ALERT] Resend send rate/quota limit reached in ${context}`, err, {
+      recipient,
+      isRateLimited: true,
+      alert: "Resend free tier daily cap (100 emails/day) or rate limit exceeded!",
+    });
+  } else {
+    logger.error(`Failed to send email via Resend in ${context}`, err, { recipient });
+  }
+
+  return { success: false, error: errMsg || "Failed to send email" };
+}
 
 export async function sendMagicLinkApprovalEmail(params: {
   toEmail: string;
@@ -13,7 +35,7 @@ export async function sendMagicLinkApprovalEmail(params: {
   const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(params.rawToken)}`;
 
   if (!resend) {
-    console.log(`[DEV / TEST] Magic link email for ${params.toEmail}: ${approvalUrl}`);
+    logger.info(`[DEV / TEST] Magic link email for ${params.toEmail}: ${approvalUrl}`);
     return { success: true };
   }
 
@@ -43,8 +65,7 @@ export async function sendMagicLinkApprovalEmail(params: {
     });
     return { success: true };
   } catch (err: any) {
-    console.error("Failed to send Resend email:", err);
-    return { success: false, error: err.message || "Failed to send email" };
+    return handleEmailSendError(err, "sendMagicLinkApprovalEmail", params.toEmail);
   }
 }
 

@@ -98,6 +98,8 @@ export const testimonials = pgTable(
     creatorIdx: index("idx_testimonials_creator_id").on(table.creatorId),
     widgetIdx: index("idx_testimonials_widget_id").on(table.widgetId),
     statusIdx: index("idx_testimonials_status").on(table.status),
+    creatorStatusIdx: index("idx_testimonials_creator_status").on(table.creatorId, table.status),
+    widgetStatusIdx: index("idx_testimonials_widget_status").on(table.widgetId, table.status),
   })
 );
 

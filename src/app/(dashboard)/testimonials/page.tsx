@@ -325,18 +325,9 @@ export default function TestimonialsModerationPage() {
           ))}
         </div>
 
-        {/* Pro Tier Bulk Approval Nudge */}
-        <div className="flex items-center gap-2 text-xs">
-          <button
-            onClick={() => setShowUpgradeModal(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-light text-ink-800/70 border border-ink-800/10 hover:border-ink-800 transition font-medium"
-          >
-            <Crown className="w-3.5 h-3.5 text-ink-900" />
-            <span>Bulk Select & Approve</span>
-            <span className="text-[10px] font-mono uppercase bg-ink-900 text-surface-white px-1.5 py-0.5 rounded">
-              Pro
-            </span>
-          </button>
+        {/* Queue Count */}
+        <div className="flex items-center gap-2 text-xs font-mono text-ink-800/60">
+          <span>{filteredItems.length} {filter === "all" ? "total" : filter}</span>
         </div>
       </div>
 
@@ -782,15 +773,6 @@ export default function TestimonialsModerationPage() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Upgrade to Pro Modal */}
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        title="Bulk Select & Approve Testimonials"
-        featureName="Pro Batch Moderation"
-        description="1-click batch approvals and bulk moderation are exclusive to Pro Workspaces. Upgrade to moderate 10+ testimonials instantly!"
-      />
     </div>
   );
 }

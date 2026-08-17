@@ -1,0 +1,30 @@
+name: Supabase Database Keepalive
+
+on:
+  schedule:
+    # Run every 3 days at 04:00 UTC
+    - cron: '0 4 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  keepalive:
+    name: Ping Database Keepalive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health Check Ping
+        run: |
+          if [ -n "${{ secrets.APP_URL }}" ]; then
+            echo "Pinging health endpoint at ${{ secrets.APP_URL }}/api/health..."
+            curl -s -f "${{ secrets.APP_URL }}/api/health" || echo "Warning: Health endpoint returned non-200"
+          else
+            echo "APP_URL secret not set. Skipping HTTP ping."
+          fi
+
+      - name: Direct DB Keepalive Query (if DATABASE_URL provided)
+        if: "${{ env.DATABASE_URL != '' }}"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Executing lightweight keepalive query..."
+          # Uses psql with SSL mode to perform a lightweight query that resets Supabase pause timer
+          psql "$DATABASE_URL" -c "SELECT 1 as keepalive_ping;" || echo "Warning: Direct query failed"
