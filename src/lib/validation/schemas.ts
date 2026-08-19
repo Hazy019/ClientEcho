@@ -46,14 +46,29 @@ export const widgetSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
   themeConfig: z
     .object({
-      primaryColor: z.string().default("#4f46e5"),
-      backgroundColor: z.string().default("#ffffff"),
-      textColor: z.string().default("#111827"),
+      primaryColor: z.string().optional(),
+      accentColor: z.string().optional(),
+      backgroundColor: z.string().optional(),
+      textColor: z.string().optional(),
       cardStyle: z.enum(["minimal", "border", "glass"]).default("border"),
-      layout: z.enum(["grid", "carousel", "list"]).default("grid"),
+      layout: z.enum(["grid", "carousel", "list", "rotator", "marquee", "spotlight"]).optional(),
+      layoutVariant: z.enum(["grid", "carousel", "rotator", "marquee", "spotlight"]).default("grid"),
+      fontPairing: z.string().optional(),
       showRating: z.boolean().default(true),
       showAvatar: z.boolean().default(true),
+      borderRadius: z.union([z.number(), z.string()]).optional(),
+      paddingDensity: z.enum(["compact", "comfortable", "spacious"]).default("comfortable"),
+      shadowIntensity: z.enum(["none", "subtle", "pronounced"]).default("subtle"),
+      sizePreset: z.enum(["compact", "standard", "large", "full", "custom"]).default("standard"),
+      customMaxWidth: z.union([z.number(), z.string()]).optional(),
+      textReveal: z.boolean().default(false),
+      defaultTheme: z.enum(["light", "dark", "auto"]).default("light"),
+      autoRotateInterval: z.number().min(2).max(60).default(6),
+      customCss: z.string().optional(),
     })
+    .passthrough()
     .default({}),
   isActive: z.boolean().default(true),
 });
+
+

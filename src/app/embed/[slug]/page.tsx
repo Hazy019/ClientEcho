@@ -7,7 +7,15 @@ import { getCachedWidgetPayload, setCachedWidgetPayload } from "@/lib/cache/redi
 
 export const dynamic = "force-dynamic";
 
-export default async function EmbedWidgetPage({ params }: { params: { slug: string } }) {
+export default async function EmbedWidgetPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { theme?: string };
+}) {
+  const initialTheme = searchParams?.theme;
+
   // Check Upstash Redis cache first
   const cachedPayload = await getCachedWidgetPayload(params.slug);
   if (cachedPayload && cachedPayload.widget) {
@@ -15,6 +23,7 @@ export default async function EmbedWidgetPage({ params }: { params: { slug: stri
       <WidgetDisplayClient
         widget={cachedPayload.widget}
         testimonials={cachedPayload.testimonials}
+        initialTheme={initialTheme}
       />
     );
   }
@@ -39,6 +48,13 @@ export default async function EmbedWidgetPage({ params }: { params: { slug: stri
   // Asynchronously populate Redis cache
   await setCachedWidgetPayload(params.slug, payload);
 
-  return <WidgetDisplayClient widget={widget} testimonials={approvedTestimonials} />;
+  return (
+    <WidgetDisplayClient
+      widget={widget}
+      testimonials={approvedTestimonials}
+      initialTheme={initialTheme}
+    />
+  );
 }
+
 

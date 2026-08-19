@@ -8,6 +8,8 @@
     return;
   }
 
+  const initialTheme = script.getAttribute("data-theme") || "light";
+
   // Known widget domain determined from script source or current origin
   const scriptUrl = new URL(script.src);
   const widgetHost = scriptUrl.origin;
@@ -18,7 +20,12 @@
   container.style.overflow = "hidden";
 
   const iframe = document.createElement("iframe");
-  iframe.src = `${widgetHost}/embed/${encodeURIComponent(widgetSlug)}`;
+  const embedUrl = new URL(`${widgetHost}/embed/${encodeURIComponent(widgetSlug)}`);
+  if (initialTheme) {
+    embedUrl.searchParams.set("theme", initialTheme);
+  }
+  iframe.src = embedUrl.toString();
+
   // Strict sandboxing: allow-scripts, allow-same-origin, and allow-popups for verification page links
   iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
   iframe.style.width = "100%";
@@ -30,13 +37,22 @@
   container.appendChild(iframe);
   script.parentNode.insertBefore(container, script.nextSibling);
 
-  // Listen strictly for auto-resize postMessage from widget domain
+  // Listen for auto-resize postMessage from widget domain & host-page live theme updates
   window.addEventListener("message", function (event) {
-    // Validate event.origin against the expected widget serving domain!
-    if (event.origin !== widgetHost) return;
-
-    if (event.data && event.data.type === "clientecho-resize" && typeof event.data.height === "number") {
+    // Resize message sent from iframe
+    if (event.origin === widgetHost && event.data && event.data.type === "clientecho-resize" && typeof event.data.height === "number") {
       iframe.style.height = `${Math.max(150, event.data.height)}px`;
+    }
+
+    // Host page theme change notification (relay to iframe)
+    if (event.data && event.data.type === "clientecho-set-theme" && typeof event.data.theme === "string") {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage(
+          { type: "clientecho-set-theme", theme: event.data.theme },
+          "*"
+        );
+      }
     }
   });
 })();
+

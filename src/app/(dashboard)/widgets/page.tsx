@@ -9,8 +9,6 @@ import {
   Eye,
   Plus,
   Loader2,
-  Star,
-  Crown,
   Palette,
   Type,
   Layout,
@@ -20,14 +18,21 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  ShieldCheck,
   RefreshCw,
   Edit3,
+  Sun,
+  Moon,
+  Sliders,
+  Play,
+  Layers,
+  HelpCircle,
+  Maximize2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import UpgradeModal from "@/components/ui/UpgradeModal";
-import CustomSelect, { SelectOption } from "@/components/ui/CustomSelect";
+import CustomSelect from "@/components/ui/CustomSelect";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
+import WidgetDisplayClient from "@/app/embed/[slug]/WidgetDisplayClient";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +71,36 @@ interface WidgetItem {
   isActive: boolean;
 }
 
+const sampleTestimonials = [
+  {
+    id: "sample-1",
+    authorName: "Sarah Jenkins",
+    authorTitle: "Founder at Acme Studio",
+    content: "ClientEcho completely eliminated back-and-forth friction for our client testimonials. The magic link approval process took less than 30 seconds!",
+    rating: 5,
+    source: "magic_link" as const,
+    isImportedSelfReported: false,
+  },
+  {
+    id: "sample-2",
+    authorName: "Marcus Chen",
+    authorTitle: "VP Product at LinearFlow",
+    content: "Embedding the verified widget on our landing page boosted our demo conversion rate by 34% in the first two weeks. Exceptional build quality.",
+    rating: 5,
+    source: "magic_link" as const,
+    isImportedSelfReported: false,
+  },
+  {
+    id: "sample-3",
+    authorName: "Elena Rostova",
+    authorTitle: "Design Lead at Prisma Lab",
+    content: "Cleanest testimonial widget I've integrated. The dark mode matches our design system seamlessly with zero CSS overrides needed.",
+    rating: 5,
+    source: "manual_import" as const,
+    isImportedSelfReported: true,
+  },
+];
+
 export default function WidgetsPage() {
   const { showToast } = useToast();
 
@@ -83,10 +118,12 @@ export default function WidgetsPage() {
   const [upgradeFeatureName, setUpgradeFeatureName] = useState("Pro Feature Access");
   const [upgradeDescription, setUpgradeDescription] = useState("Unlock unlimited widgets, custom typography, accent colors, layout variants, and bulk approvals.");
 
-  // Collapsible Starter Options State
+  // Collapsible Sections State
   const [starterOpen, setStarterOpen] = useState(true);
+  const [noCodeOpen, setNoCodeOpen] = useState(true);
+  const [cssCheatSheetOpen, setCssCheatSheetOpen] = useState(false);
 
-  // Free Tier State — initialized with a unique random slug to prevent multi-tenant collision
+  // Free Tier State
   const [name, setName] = useState("Default Portfolio Widget");
   const [slug, setSlug] = useState(() => generateRandomSlug());
   const [cardStyle, setCardStyle] = useState<"border" | "glass" | "minimal">("border");
@@ -105,16 +142,34 @@ export default function WidgetsPage() {
     message: "",
   });
 
-  // Pro Tier State
+  // Pro & Styling Tier State
   const [fontPairing, setFontPairing] = useState<"Syne" | "Manrope" | "Inter" | "Roboto" | "Outfit">("Manrope");
   const [accentColor, setAccentColor] = useState("#2D2D2D");
-  const [layoutVariant, setLayoutVariant] = useState<"grid" | "carousel" | "rotator">("grid");
+  const [layoutVariant, setLayoutVariant] = useState<"grid" | "carousel" | "rotator" | "marquee" | "spotlight">("grid");
   const [customCss, setCustomCss] = useState("");
 
+  // Pass 13 & 14 No-Code Presets, Motion & Sizing Settings
+  const [borderRadius, setBorderRadius] = useState(16); // 0px to 32px
+  const [paddingDensity, setPaddingDensity] = useState<"compact" | "comfortable" | "spacious">("comfortable");
+  const [shadowIntensity, setShadowIntensity] = useState<"none" | "subtle" | "pronounced">("subtle");
+  const [sizePreset, setSizePreset] = useState<"compact" | "standard" | "large" | "full" | "custom">("standard");
+  const [customMaxWidth, setCustomMaxWidth] = useState("");
+  const [defaultTheme, setDefaultTheme] = useState<"light" | "dark" | "auto">("light");
+  const [textReveal, setTextReveal] = useState(false);
+  const [autoRotateInterval, setAutoRotateInterval] = useState(6);
+
+  // Live Preview Theme Switcher & Replay State
+  const [previewTheme, setPreviewTheme] = useState<"light" | "dark">("light");
+  const [replayCount, setReplayCount] = useState(0);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedSyncSnippet, setCopiedSyncSnippet] = useState(false);
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
 
-  const isPro = subscriptionStatus === "pro";
+  // Auto-play animation once on load or whenever layout/motion/size changes
+  useEffect(() => {
+    setReplayCount((c) => c + 1);
+  }, [layoutVariant, textReveal, sizePreset, borderRadius]);
 
   const checkSlugAvailability = useCallback(async (slugToCheck: string) => {
     const clean = slugToCheck.trim().toLowerCase();
@@ -211,6 +266,14 @@ export default function WidgetsPage() {
             accentColor,
             layoutVariant,
             customCss,
+            borderRadius,
+            paddingDensity,
+            shadowIntensity,
+            sizePreset,
+            customMaxWidth: sizePreset === "custom" ? customMaxWidth : undefined,
+            defaultTheme,
+            textReveal,
+            autoRotateInterval,
           },
           isActive: true,
         }),
@@ -262,6 +325,19 @@ export default function WidgetsPage() {
     if (cfg.accentColor) setAccentColor(cfg.accentColor);
     if (cfg.layoutVariant) setLayoutVariant(cfg.layoutVariant);
     if (cfg.customCss !== undefined) setCustomCss(cfg.customCss);
+    if (cfg.borderRadius !== undefined) setBorderRadius(Number(cfg.borderRadius) || 16);
+    if (cfg.paddingDensity) setPaddingDensity(cfg.paddingDensity);
+    if (cfg.shadowIntensity) setShadowIntensity(cfg.shadowIntensity);
+    if (cfg.sizePreset) setSizePreset(cfg.sizePreset);
+    if (cfg.customMaxWidth) setCustomMaxWidth(String(cfg.customMaxWidth));
+    if (cfg.defaultTheme) {
+      setDefaultTheme(cfg.defaultTheme);
+      if (cfg.defaultTheme === "dark") setPreviewTheme("dark");
+      else setPreviewTheme("light");
+    }
+    if (cfg.textReveal !== undefined) setTextReveal(Boolean(cfg.textReveal));
+    if (cfg.autoRotateInterval) setAutoRotateInterval(Number(cfg.autoRotateInterval) || 6);
+
     setSlugStatus({
       checking: false,
       available: true,
@@ -283,13 +359,23 @@ export default function WidgetsPage() {
     setAccentColor("#2D2D2D");
     setLayoutVariant("grid");
     setCustomCss("");
+    setBorderRadius(16);
+    setPaddingDensity("comfortable");
+    setShadowIntensity("subtle");
+    setSizePreset("standard");
+    setCustomMaxWidth("");
+    setDefaultTheme("light");
+    setPreviewTheme("light");
+    setTextReveal(false);
+    setAutoRotateInterval(6);
     setSlugStatus({ checking: false, available: null, message: "" });
     showToast("Ready to configure new widget", "info");
   };
 
-  const getEmbedCode = (widgetSlug: string) => {
+  const getEmbedCode = (widgetSlug: string, themeVal?: string) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://app.clientecho.com";
-    return `<script src="${origin}/widget.js" data-widget-slug="${widgetSlug}" async></script>`;
+    const selectedTheme = themeVal || defaultTheme;
+    return `<script src="${origin}/widget.js" data-widget-slug="${widgetSlug}" data-theme="${selectedTheme}" async></script>`;
   };
 
   const handleCopy = (widgetSlug: string, widgetId: string) => {
@@ -299,13 +385,60 @@ export default function WidgetsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const hostSyncSnippet = `// On your host website, whenever your own dark-mode toggle fires:
+window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
+
+  const handleCopySyncSnippet = () => {
+    navigator.clipboard.writeText(hostSyncSnippet);
+    setCopiedSyncSnippet(true);
+    showToast("Host theme sync snippet copied!", "success");
+    setTimeout(() => setCopiedSyncSnippet(false), 2000);
+  };
+
+  const cssClassList = [
+    { name: ".clientecho-card", desc: "The outer testimonial card container (background, borders, shadows)" },
+    { name: ".clientecho-quote", desc: "The quote text paragraph element" },
+    { name: ".clientecho-author-name", desc: "The reviewer's full name" },
+    { name: ".clientecho-author-title", desc: "The reviewer's job title or company name" },
+    { name: ".clientecho-avatar", desc: "The author avatar image or initial badge circle" },
+    { name: ".clientecho-badge", desc: "The trust verification badge (Verified / Self-Reported)" },
+    { name: ".clientecho-stars", desc: "The star rating row and star icons" },
+    { name: ".clientecho-video-btn", desc: "The video testimonial watch button" },
+    { name: ".clientecho-rotator-nav", desc: "The previous/next navigation bar in rotator layout" },
+    { name: ".clientecho-spotlight-chips", desc: "The interactive reviewer thumbnail selector chips" },
+  ];
+
+  // Construct current preview widget configuration object
+  const previewWidgetConfig = {
+    id: editingWidgetId || "preview-widget",
+    slug: slug || "preview-widget",
+    name: name || "Preview Widget",
+    themeConfig: {
+      cardStyle,
+      showRating,
+      showAvatar,
+      fontPairing,
+      accentColor,
+      layoutVariant,
+      customCss,
+      borderRadius,
+      paddingDensity,
+      shadowIntensity,
+      sizePreset,
+      customMaxWidth: sizePreset === "custom" ? customMaxWidth : undefined,
+      defaultTheme: previewTheme,
+      textReveal,
+      autoRotateInterval,
+    },
+  };
+
   return (
     <div className="space-y-8 font-sans">
       <div className="border-b border-ink-900/10 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-ink-900">Widget Customizer</h1>
           <p className="text-ink-800/70 text-sm mt-1">
-            Configure real-time styling with live side-by-side preview and grab sandboxed embed code.
+            Configure real-time styling, 3D motion transitions, dark/light themes, sizing presets, and grab sandboxed embed code.
           </p>
         </div>
 
@@ -316,7 +449,7 @@ export default function WidgetsPage() {
           <button
             type="button"
             onClick={handleNewWidget}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 text-surface-white hover:bg-ink-800 rounded-full text-xs font-semibold transition shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 text-surface-white hover:bg-ink-800 rounded-full text-xs font-semibold transition shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Widget</span>
@@ -330,7 +463,7 @@ export default function WidgetsPage() {
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-ink-900" />
-              <span>{editingWidgetId ? "Edit Widget Styling" : "Widget Styling Configuration"}</span>
+              <span>{editingWidgetId ? "Edit Widget Configuration" : "Widget Configuration"}</span>
             </h2>
             {editingWidgetId && (
               <span className="text-[10px] font-mono px-2 py-0.5 bg-emerald-500/10 text-emerald-800 border border-emerald-500/30 rounded font-semibold">
@@ -345,9 +478,9 @@ export default function WidgetsPage() {
               <button
                 type="button"
                 onClick={() => setStarterOpen(!starterOpen)}
-                className="w-full p-4 flex items-center justify-between font-mono font-bold text-xs uppercase tracking-wider text-ink-900 hover:bg-surface-light transition text-left"
+                className="w-full p-4 flex items-center justify-between font-mono font-bold text-xs uppercase tracking-wider text-ink-900 hover:bg-surface-light transition text-left cursor-pointer"
               >
-                <span>Starter Tier Options (All Plans)</span>
+                <span>1. Core Identity & Cards</span>
                 {starterOpen ? <ChevronUp className="w-4 h-4 text-ink-800/60" /> : <ChevronDown className="w-4 h-4 text-ink-800/60" />}
               </button>
 
@@ -421,7 +554,7 @@ export default function WidgetsPage() {
                           checkSlugAvailability(freshSlug);
                         }}
                         title="Generate random unique slug"
-                        className="px-3 py-2.5 bg-surface-light hover:bg-ink-900/5 text-ink-900 border border-ink-900/10 rounded-xl text-xs font-mono font-medium transition flex items-center gap-1"
+                        className="px-3 py-2.5 bg-surface-light hover:bg-ink-900/5 text-ink-900 border border-ink-900/10 rounded-xl text-xs font-mono font-medium transition flex items-center gap-1 cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5 text-ink-800/60" />
                         <span className="hidden sm:inline">Randomize</span>
@@ -453,7 +586,7 @@ export default function WidgetsPage() {
                           key={style}
                           type="button"
                           onClick={() => setCardStyle(style)}
-                          className={`py-2.5 px-3 rounded-xl text-xs font-medium capitalize border transition ${
+                          className={`py-2.5 px-3 rounded-xl text-xs font-medium capitalize border transition cursor-pointer ${
                             cardStyle === style
                               ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
                               : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
@@ -492,16 +625,254 @@ export default function WidgetsPage() {
               )}
             </div>
 
-            {/* Styling & Customization Options */}
+            {/* No-Code Visual Presets Section */}
+            <div className="border border-ink-900/10 rounded-2xl overflow-hidden bg-surface-light/40">
+              <button
+                type="button"
+                onClick={() => setNoCodeOpen(!noCodeOpen)}
+                className="w-full p-4 flex items-center justify-between font-mono font-bold text-xs uppercase tracking-wider text-ink-900 hover:bg-surface-light transition text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-ink-900" />
+                  <span>2. Sizing, Visual & Theme Presets</span>
+                </div>
+                {noCodeOpen ? <ChevronUp className="w-4 h-4 text-ink-800/60" /> : <ChevronDown className="w-4 h-4 text-ink-800/60" />}
+              </button>
+
+              {noCodeOpen && (
+                <div className="p-4 pt-0 space-y-4 border-t border-ink-900/5 bg-surface-white">
+                  {/* Default Theme Selector */}
+                  <div className="pt-3">
+                    <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
+                      Default Embed Theme
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["light", "dark", "auto"] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => {
+                            setDefaultTheme(t);
+                            if (t === "dark") setPreviewTheme("dark");
+                            else setPreviewTheme("light");
+                          }}
+                          className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            defaultTheme === t
+                              ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
+                              : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
+                          }`}
+                        >
+                          {t === "light" && <Sun className="w-3.5 h-3.5" />}
+                          {t === "dark" && <Moon className="w-3.5 h-3.5" />}
+                          {t === "auto" && <Layers className="w-3.5 h-3.5" />}
+                          <span>{t === "auto" ? "Auto (OS)" : t}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Widget Sizing Presets */}
+                  <div>
+                    <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                      <Maximize2 className="w-3.5 h-3.5 text-ink-800/60" />
+                      <span>Widget Container Size</span>
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                      {[
+                        { id: "compact", label: "Compact", sub: "320px" },
+                        { id: "standard", label: "Standard", sub: "480px" },
+                        { id: "large", label: "Large", sub: "640px" },
+                        { id: "full", label: "Full Width", sub: "100%" },
+                        { id: "custom", label: "Custom", sub: "Exact" },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSizePreset(item.id as any)}
+                          className={`py-2 px-2 rounded-xl text-center border transition flex flex-col items-center justify-center cursor-pointer ${
+                            sizePreset === item.id
+                              ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
+                              : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
+                          }`}
+                        >
+                          <span className="text-xs font-medium">{item.label}</span>
+                          <span className="text-[9px] opacity-70 font-mono">{item.sub}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {sizePreset === "custom" && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customMaxWidth}
+                          onChange={(e) => setCustomMaxWidth(e.target.value)}
+                          placeholder="e.g. 520px or 75%"
+                          className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-xs font-mono focus:outline-none focus:border-ink-900"
+                        />
+                        <span className="text-[11px] text-ink-800/60 font-mono whitespace-nowrap">
+                          Responsive max-width
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Corner Roundness Slider */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider">
+                        Corner Roundness
+                      </label>
+                      <span className="text-xs font-mono font-bold text-ink-900 bg-surface-light px-2 py-0.5 rounded border border-ink-900/10">
+                        {borderRadius}px
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={32}
+                      step={2}
+                      value={borderRadius}
+                      onChange={(e) => setBorderRadius(Number(e.target.value))}
+                      className="w-full h-2 bg-ink-900/10 rounded-lg appearance-none cursor-pointer accent-ink-900"
+                    />
+                    <div className="flex justify-between text-[10px] font-mono text-ink-800/50 mt-1">
+                      <span>Sharp (0px)</span>
+                      <span>Card (16px)</span>
+                      <span>Pill (32px)</span>
+                    </div>
+                  </div>
+
+                  {/* Padding Density */}
+                  <div>
+                    <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
+                      Card Padding Density
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["compact", "comfortable", "spacious"] as const).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setPaddingDensity(d)}
+                          className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition cursor-pointer ${
+                            paddingDensity === d
+                              ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
+                              : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Shadow Intensity */}
+                  <div>
+                    <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
+                      Shadow Elevation
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["none", "subtle", "pronounced"] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setShadowIntensity(s)}
+                          className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition cursor-pointer ${
+                            shadowIntensity === s
+                              ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
+                              : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Layout, Typography & Motion Customization */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between pb-1 border-b border-ink-900/10">
                 <div className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-ink-900" />
-                  <span>Widget Styling & Layouts</span>
+                  <Layout className="w-3.5 h-3.5 text-ink-900" />
+                  <span>3. Layout Variety & React Bits Motion</span>
                 </div>
                 <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 bg-surface-light border border-ink-900/10 text-ink-800 rounded">
-                  All Options Unlocked
+                  React Bits Enabled
                 </span>
+              </div>
+
+              {/* Layout Format Variety (Grid, Carousel, Rotator, Marquee, Spotlight) */}
+              <div>
+                <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
+                  Layout Format
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {[
+                    { id: "grid", label: "Grid" },
+                    { id: "carousel", label: "Carousel" },
+                    { id: "rotator", label: "Rotator" },
+                    { id: "marquee", label: "Marquee" },
+                    { id: "spotlight", label: "Spotlight" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setLayoutVariant(item.id as any)}
+                      className={`py-2 px-2 rounded-xl text-xs font-medium capitalize border transition flex items-center justify-center cursor-pointer ${
+                        layoutVariant === item.id
+                          ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
+                          : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rotator & Spotlight specific settings */}
+              {(layoutVariant === "rotator" || layoutVariant === "spotlight") && (
+                <div className="p-3 bg-surface-light/60 rounded-xl border border-ink-900/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-mono font-semibold text-ink-900 flex items-center gap-1">
+                      <Play className="w-3.5 h-3.5 text-ink-800" />
+                      <span>Auto-Rotate Interval</span>
+                    </label>
+                    <span className="text-xs font-mono font-bold text-ink-900">
+                      {autoRotateInterval}s (Pause on hover)
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={3}
+                    max={15}
+                    step={1}
+                    value={autoRotateInterval}
+                    onChange={(e) => setAutoRotateInterval(Number(e.target.value))}
+                    className="w-full h-1.5 bg-ink-900/10 rounded-lg appearance-none cursor-pointer accent-ink-900"
+                  />
+                </div>
+              )}
+
+              {/* Text Reveal Blur Animation Toggle */}
+              <div className="flex items-center justify-between p-3 bg-surface-light/60 rounded-xl border border-ink-900/10">
+                <div>
+                  <div className="text-xs font-mono font-semibold text-ink-900">
+                    Quote Blur-to-Sharp Text Reveal (React Bits)
+                  </div>
+                  <div className="text-[11px] text-ink-800/60 mt-0.5">
+                    Restrained per-word blur & fade-in when quote becomes active (respects reduced motion)
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={textReveal}
+                  onChange={(e) => setTextReveal(e.target.checked)}
+                  className="w-4 h-4 rounded border-ink-900 text-ink-900 focus:ring-0 cursor-pointer"
+                />
               </div>
 
               {/* Typography Override */}
@@ -509,7 +880,7 @@ export default function WidgetsPage() {
                 <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <Type className="w-3.5 h-3.5 text-ink-800/60" />
-                    <span>Typography Override</span>
+                    <span>Typography Pairing</span>
                   </span>
                 </label>
                 <CustomSelect
@@ -550,13 +921,13 @@ export default function WidgetsPage() {
                 </div>
                 {(() => {
                   const safeHex = accentColor.startsWith("#") ? accentColor : "#2D2D2D";
-                  const ratio = getContrastRatio(safeHex, "#FFFFFF");
+                  const ratio = getContrastRatio(safeHex, previewTheme === "dark" ? "#1A1A1D" : "#FFFFFF");
                   if (ratio < 3.0) {
                     return (
                       <div className="mt-2.5 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-900 flex items-center gap-2 font-sans">
                         <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                         <span>
-                          <strong>Low Contrast Warning:</strong> Accent color ({accentColor}) has a {ratio.toFixed(1)}:1 contrast ratio against white background and may be hard to read.
+                          <strong>Low Contrast Warning:</strong> Accent color ({accentColor}) has a {ratio.toFixed(1)}:1 contrast ratio against {previewTheme === "dark" ? "dark" : "light"} background.
                         </span>
                       </div>
                     );
@@ -565,49 +936,46 @@ export default function WidgetsPage() {
                 })()}
               </div>
 
-              {/* Layout Variant */}
-              <div>
-                <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1 flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Layout className="w-3.5 h-3.5 text-ink-800/60" />
-                    <span>Layout Variant</span>
-                  </span>
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(["grid", "carousel", "rotator"] as const).map((variant) => (
-                    <button
-                      key={variant}
-                      type="button"
-                      onClick={() => setLayoutVariant(variant)}
-                      className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition flex items-center justify-center gap-1 ${
-                        layoutVariant === variant
-                          ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
-                          : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
-                      }`}
-                    >
-                      <span>{variant}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Custom CSS Injection */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
+              {/* Custom CSS Injection & Discoverable Cheat Sheet */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
                   <label className="text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider flex items-center gap-1">
                     <Code2 className="w-3.5 h-3.5 text-ink-800/60" />
-                    <span>Scoped Custom CSS</span>
+                    <span>Scoped Custom CSS (Advanced)</span>
                   </label>
-                  <span className="text-[10px] font-mono text-ink-800/60 bg-surface-light px-2 py-0.5 rounded border border-ink-800/10">
-                    Scoped to widget
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCssCheatSheetOpen(!cssCheatSheetOpen)}
+                    className="text-[11px] font-mono text-ink-900 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>{cssCheatSheetOpen ? "Hide Class API" : "Available CSS Classes"}</span>
+                  </button>
                 </div>
 
+                {cssCheatSheetOpen && (
+                  <div className="p-3 bg-surface-light border border-ink-900/10 rounded-xl space-y-2 text-xs">
+                    <div className="font-mono font-bold text-[11px] text-ink-900 uppercase">
+                      Stable CSS Target Selectors:
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {cssClassList.map((item) => (
+                        <div key={item.name} className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 text-[11px] py-1 border-b border-ink-900/5">
+                          <code className="font-mono font-semibold text-ink-900 bg-surface-white px-1.5 py-0.5 rounded border border-ink-900/10">
+                            {item.name}
+                          </code>
+                          <span className="text-ink-800/70 text-[10px]">{item.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={customCss}
                   onChange={(e) => setCustomCss(e.target.value)}
-                  placeholder=".clientecho-card { border-radius: 20px; }"
+                  placeholder=".clientecho-card { border-width: 2px; }&#10;.clientecho-quote { font-style: italic; }"
                   className="w-full px-3.5 py-2 border border-ink-900/20 rounded-xl text-xs font-mono focus:outline-none focus:border-ink-900 placeholder:text-ink-800/30"
                 />
               </div>
@@ -616,7 +984,7 @@ export default function WidgetsPage() {
             <button
               type="submit"
               disabled={creating}
-              className="w-full py-3.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-display font-semibold rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-display font-semibold rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {creating ? (
                 <>
@@ -635,91 +1003,95 @@ export default function WidgetsPage() {
 
         {/* Live Side-by-Side Preview Pane (Sticky in Viewport) */}
         <div className="space-y-6 sticky top-24">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
               <Eye className="w-5 h-5 text-ink-900" />
-              <span>Live Instant Preview Pane</span>
+              <span>Live Instant Preview</span>
             </h2>
+
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase bg-ink-900 text-surface-white px-2 py-0.5 rounded">
-                Live Preview
-              </span>
-              <span className="text-[10px] font-mono uppercase bg-surface-light border border-ink-800/20 text-ink-800 px-2 py-0.5 rounded">
-                Font: {fontPairing}
+              {/* Replay Animation Trigger Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setReplayCount((c) => c + 1);
+                  showToast("Replaying animation...", "info");
+                }}
+                title="Trigger and replay active layout & text-reveal transitions"
+                className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold bg-surface-white border border-ink-900/15 hover:bg-surface-light text-ink-900 shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Play className="w-3 h-3 text-ink-900 fill-ink-900" />
+                <span>Replay animation</span>
+              </button>
+
+              {/* Preview Light / Dark Mode Toggle */}
+              <div className="flex items-center bg-surface-light border border-ink-900/10 p-0.5 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setPreviewTheme("light")}
+                  className={`px-2 py-1 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 cursor-pointer ${
+                    previewTheme === "light"
+                      ? "bg-surface-white text-ink-900 shadow-xs"
+                      : "text-ink-800/60 hover:text-ink-900"
+                  }`}
+                >
+                  <Sun className="w-3 h-3" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTheme("dark")}
+                  className={`px-2 py-1 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 cursor-pointer ${
+                    previewTheme === "dark"
+                      ? "bg-ink-900 text-surface-white shadow-xs"
+                      : "text-ink-800/60 hover:text-ink-900"
+                  }`}
+                >
+                  <Moon className="w-3 h-3" />
+                  <span>Dark</span>
+                </button>
+              </div>
+
+              <span className="text-[10px] font-mono uppercase bg-surface-light border border-ink-800/20 text-ink-800 px-2 py-1 rounded">
+                {layoutVariant}
               </span>
             </div>
           </div>
 
-          {/* Rendered Dynamic Live Card Preview */}
-          <div
-            style={{
-              fontFamily:
-                fontPairing === "Syne"
-                  ? "var(--font-syne), sans-serif"
-                  : fontPairing === "Inter"
-                  ? "var(--font-inter), sans-serif"
-                  : fontPairing === "Roboto"
-                  ? "var(--font-roboto), sans-serif"
-                  : fontPairing === "Outfit"
-                  ? "var(--font-outfit), sans-serif"
-                  : "var(--font-manrope), sans-serif",
-            }}
-            className="bg-surface-light p-6 rounded-3xl border border-ink-900/10 space-y-4 min-h-[340px] flex flex-col justify-center transition-all duration-300"
-          >
-            <div
-              className={`p-6 rounded-2xl transition-all duration-200 ${
-                cardStyle === "glass"
-                  ? "bg-surface-white/70 backdrop-blur-md shadow-sm border border-surface-white"
-                  : cardStyle === "border"
-                  ? "bg-surface-white border border-ink-900/10 shadow-sm"
-                  : "bg-surface-white/40"
-              }`}
-            >
-              {showRating && (
-                <div className="flex items-center gap-1 mb-3">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star
-                      key={s}
-                      className="w-4 h-4"
-                      style={{ fill: accentColor, color: accentColor }}
-                    />
-                  ))}
-                </div>
-              )}
+          {/* Rendered Live Preview using full WidgetDisplayClient with seeded samples */}
+          <div className="bg-surface-light/60 p-4 sm:p-6 rounded-3xl border border-ink-900/10 min-h-[380px] flex flex-col justify-center transition-all duration-300 overflow-hidden">
+            <WidgetDisplayClient
+              widget={previewWidgetConfig}
+              testimonials={sampleTestimonials}
+              initialTheme={previewTheme}
+              replayKey={replayCount}
+            />
+          </div>
 
-              <p className="text-sm text-ink-900 leading-relaxed mb-4">
-                "ClientEcho completely eliminated back-and-forth friction for our client testimonials. The magic link approval process took less than 30 seconds!"
-              </p>
-
-              <div className="flex items-center justify-between pt-3 border-t border-ink-900/5">
-                <div className="flex items-center gap-3">
-                  {showAvatar && (
-                    <div
-                      className="w-8 h-8 rounded-full text-surface-white flex items-center justify-center font-bold text-xs"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      S
-                    </div>
-                  )}
-                  <div>
-                    <div className="font-bold text-ink-900 text-xs">Sarah Jenkins</div>
-                    <div className="text-[11px] text-ink-800/60">Founder at Acme Studio</div>
-                  </div>
-                </div>
-
-                <a
-                  href="/verify/preview-demo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Click to view live public verification page preview"
-                  className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded text-surface-white hover:opacity-90 transition inline-flex items-center gap-1 cursor-pointer shadow-xs"
-                  style={{ backgroundColor: accentColor }}
-                >
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Verified & Approved</span>
-                </a>
+          {/* Host Page Live Dark Mode Sync Documentation */}
+          <div className="bg-surface-white p-5 rounded-2xl border border-ink-900/10 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Sun className="w-4 h-4 text-ink-900" />
+                <h3 className="font-display text-xs font-bold text-ink-900 uppercase tracking-wider">
+                  Host Site Dark Mode Sync
+                </h3>
               </div>
+              <button
+                type="button"
+                onClick={handleCopySyncSnippet}
+                className="text-[11px] font-mono text-ink-900 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                {copiedSyncSnippet ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedSyncSnippet ? "Copied!" : "Copy Snippet"}</span>
+              </button>
             </div>
+            <p className="text-xs text-ink-800/70 leading-relaxed">
+              If your host site has its own manual theme toggle, trigger this postMessage whenever your theme switches to update the embedded widget live:
+            </p>
+            <pre className="bg-ink-900 text-surface-white p-3 rounded-xl font-mono text-[11px] overflow-x-auto border border-ink-800">
+              {hostSyncSnippet}
+            </pre>
           </div>
 
           {/* Active Widgets Embed List */}
@@ -777,7 +1149,7 @@ export default function WidgetsPage() {
                       <button
                         type="button"
                         onClick={() => loadWidgetToEdit(widget)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white rounded-lg text-xs font-semibold transition"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white rounded-lg text-xs font-semibold transition cursor-pointer"
                       >
                         <Edit3 className="w-3 h-3" />
                         <span>Edit</span>
@@ -785,7 +1157,7 @@ export default function WidgetsPage() {
                       <button
                         type="button"
                         onClick={() => handleCopy(widget.slug, widget.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-white text-ink-900 hover:bg-surface-light rounded-lg text-xs font-semibold transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-white text-ink-900 hover:bg-surface-light rounded-lg text-xs font-semibold transition cursor-pointer"
                       >
                         {copiedId === widget.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copiedId === widget.id ? "Copied!" : "Copy"}</span>
@@ -794,7 +1166,7 @@ export default function WidgetsPage() {
                   </div>
 
                   <pre className="bg-ink-800 p-3 rounded-xl font-mono text-[11px] text-surface-white/90 overflow-x-auto border border-surface-white/10 whitespace-pre-wrap">
-                    {getEmbedCode(widget.slug)}
+                    {getEmbedCode(widget.slug, widget.themeConfig?.defaultTheme)}
                   </pre>
                 </div>
               ))
