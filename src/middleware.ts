@@ -34,7 +34,17 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const role = user?.app_metadata?.role;
 
-  // 1. Route-specific Framing & Security Headers (Section 1 & 9)
+  // 1. Global Security Headers
+  supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
+  supabaseResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (process.env.NODE_ENV === "production") {
+    supabaseResponse.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload"
+    );
+  }
+
+  // Route-specific Framing & Security Headers (Section 1 & 9)
   if (pathname.startsWith("/embed")) {
     // Embed pages are intended to be framed on arbitrary creator sites
     supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors *");
@@ -54,7 +64,6 @@ export async function middleware(request: NextRequest) {
     // Authenticated and Auth surfaces MUST reject framing to prevent Clickjacking attacks
     supabaseResponse.headers.set("X-Frame-Options", "DENY");
     supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
-    supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
   }
 
   // 2. Protected Creator Routes (Requires authenticated creator, Tech Admin is forbidden)

@@ -5,6 +5,7 @@ import SignOutButton from "./SignOutButton";
 import DashboardNav from "@/components/ui/DashboardNav";
 import HelpSupportButton from "@/components/ui/HelpSupportButton";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ModalProvider } from "@/components/ui/ConfirmModal";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const userEmail = user?.email || "Creator Workspace";
 
   return (
-    <ToastProvider>
-      <div className="min-h-screen bg-surface-light font-sans text-ink-900 overflow-hidden">
+    <ModalProvider>
+      <ToastProvider>
+        <div className="min-h-screen bg-surface-light font-sans text-ink-900 overflow-hidden">
         {/* Top Header: fixed, outside the scroll container entirely */}
         <header className="app-navbar bg-ink-900 text-surface-white px-4 md:px-6 flex items-center justify-between">
           {/* Left: Logo + Nav */}
@@ -61,7 +63,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {/* Floating Persistent Help & Support Affordance */}
         <HelpSupportButton />
       </div>
-    </ToastProvider>
+      </ToastProvider>
+    </ModalProvider>
   );
 }
 

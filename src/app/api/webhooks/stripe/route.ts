@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import Stripe from "stripe";
 import { db } from "@/db";
-import { creators } from "@/db/schema";
+import { creators, processedStripeEvents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
@@ -37,41 +37,61 @@ export async function POST(req: Request) {
   }
 
   try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const creatorId = session.client_reference_id || session.metadata?.creatorId;
+    // 1. Check idempotency: Return acknowledgment immediately if already processed
+    const [existingEvent] = await db
+      .select()
+      .from(processedStripeEvents)
+      .where(eq(processedStripeEvents.id, event.id));
 
-        if (creatorId && session.customer) {
-          await db
-            .update(creators)
-            .set({
-              stripeCustomerId: session.customer as string,
-              stripeSubscriptionId: session.subscription as string,
-              subscriptionStatus: "active",
-              updatedAt: new Date(),
-            })
-            .where(eq(creators.id, creatorId));
-        }
-        break;
-      }
-      case "customer.subscription.updated":
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-
-        await db
-          .update(creators)
-          .set({
-            subscriptionStatus: subscription.status,
-            updatedAt: new Date(),
-          })
-          .where(eq(creators.stripeCustomerId, customerId));
-        break;
-      }
+    if (existingEvent) {
+      console.log(`[STRIPE WEBHOOK IDEMPOTENT] Event ${event.id} already processed at ${existingEvent.processedAt}. Skipping.`);
+      return NextResponse.json({ received: true, duplicate: true });
     }
 
-    return NextResponse.json({ received: true });
+    // 2. Process event and record idempotency marker in atomic transaction
+    await db.transaction(async (tx) => {
+      // Record event as processed
+      await tx.insert(processedStripeEvents).values({
+        id: event.id,
+        eventType: event.type,
+      });
+
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const session = event.data.object as Stripe.Checkout.Session;
+          const creatorId = session.client_reference_id || session.metadata?.creatorId;
+
+          if (creatorId && session.customer) {
+            await tx
+              .update(creators)
+              .set({
+                stripeCustomerId: session.customer as string,
+                stripeSubscriptionId: session.subscription as string,
+                subscriptionStatus: "active",
+                updatedAt: new Date(),
+              })
+              .where(eq(creators.id, creatorId));
+          }
+          break;
+        }
+        case "customer.subscription.updated":
+        case "customer.subscription.deleted": {
+          const subscription = event.data.object as Stripe.Subscription;
+          const customerId = subscription.customer as string;
+
+          await tx
+            .update(creators)
+            .set({
+              subscriptionStatus: subscription.status,
+              updatedAt: new Date(),
+            })
+            .where(eq(creators.stripeCustomerId, customerId));
+          break;
+        }
+      }
+    });
+
+    return NextResponse.json({ received: true, eventId: event.id });
   } catch (error) {
     console.error("Stripe webhook processing error:", error);
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });

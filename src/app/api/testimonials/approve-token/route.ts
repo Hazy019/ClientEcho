@@ -72,6 +72,7 @@ export async function GET(req: Request) {
         authorTitle: testimonial.authorTitle,
         content: testimonial.content,
         rating: testimonial.rating,
+        promptMessage: meta.promptMessage || null,
       },
     });
   } catch (error) {

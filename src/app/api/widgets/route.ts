@@ -141,16 +141,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Flat Workspace Widget Cap (1 active widget limit for all workspaces)
+    // 3. Flat Workspace Widget Cap (3 active widgets limit for free tier to test designs)
     const existingWidgets = await db
       .select()
       .from(widgets)
       .where(eq(widgets.creatorId, user.id));
 
-    if (existingWidgets.length >= 1 && !isUpdatingSameSlug) {
+    const MAX_FREE_WIDGETS = 3;
+    if (existingWidgets.length >= MAX_FREE_WIDGETS && !isUpdatingSameSlug) {
       return NextResponse.json(
         {
-          error: "Your workspace is currently limited to 1 active widget.",
+          error: `Your workspace is currently limited to ${MAX_FREE_WIDGETS} active widgets. Upgrade to Pro for unlimited widgets.`,
           code: "LIMIT_REACHED",
         },
         { status: 400 }

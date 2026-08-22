@@ -152,3 +152,11 @@ export const passwordResetTokens = pgTable(
   })
 );
 
+// 7. Processed Stripe Events (Idempotency Record)
+export const processedStripeEvents = pgTable("processed_stripe_events", {
+  id: text("id").primaryKey(), // Stripe event id (e.g. evt_12345)
+  eventType: text("event_type").notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+

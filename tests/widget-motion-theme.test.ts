@@ -2,17 +2,16 @@ import { describe, it, expect } from "vitest";
 import { widgetSchema } from "../src/lib/validation/schemas";
 import { sanitizeAndValidateCss } from "../src/lib/security/css-sanitizer";
 
-describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout Variety", () => {
-  describe("1. Widget Schema, Sizing Presets & Layouts Validation", () => {
-    it("accepts valid Pass 14 presets (marquee & spotlight layouts, sizePreset, customMaxWidth)", () => {
+describe("Pass 15: Dark Mode, Interactive Style Editor, Card Styles & Layout Variety", () => {
+  describe("1. Widget Schema, Sizing Presets, Card Styles & Layouts Validation", () => {
+    it("accepts valid Pass 15 presets (stacked_deck, orbit_avatars, transparent, outline, marqueeSpeed)", () => {
       const payload = {
         name: "Acme Portfolio Widget",
         slug: "acme-portfolio",
         themeConfig: {
-          cardStyle: "glass",
+          cardStyle: "transparent",
           fontPairing: "Outfit",
-          accentColor: "#4f46e5",
-          layoutVariant: "marquee",
+          layoutVariant: "stacked_deck",
           sizePreset: "large",
           customMaxWidth: "680px",
           borderRadius: 24,
@@ -21,7 +20,8 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
           defaultTheme: "dark",
           textReveal: true,
           autoRotateInterval: 8,
-          customCss: ".clientecho-card { border-width: 2px; }",
+          marqueeSpeed: 45,
+          customCss: ".clientecho-card { border-width: 2px; }\n.clientecho-badge-verified { background-color: #10B981; }",
         },
         isActive: true,
       };
@@ -29,7 +29,8 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
       const result = widgetSchema.safeParse(payload);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.themeConfig.layoutVariant).toBe("marquee");
+        expect(result.data.themeConfig.cardStyle).toBe("transparent");
+        expect(result.data.themeConfig.layoutVariant).toBe("stacked_deck");
         expect(result.data.themeConfig.sizePreset).toBe("large");
         expect(result.data.themeConfig.customMaxWidth).toBe("680px");
         expect(result.data.themeConfig.borderRadius).toBe(24);
@@ -38,15 +39,17 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
         expect(result.data.themeConfig.defaultTheme).toBe("dark");
         expect(result.data.themeConfig.textReveal).toBe(true);
         expect(result.data.themeConfig.autoRotateInterval).toBe(8);
+        expect(result.data.themeConfig.marqueeSpeed).toBe(45);
       }
     });
 
-    it("accepts spotlight layout with compact sizing", () => {
+    it("accepts orbit_avatars layout with outline cardStyle", () => {
       const payload = {
-        name: "Spotlight Widget",
-        slug: "spotlight-widget",
+        name: "Orbit Avatars Widget",
+        slug: "orbit-widget",
         themeConfig: {
-          layoutVariant: "spotlight",
+          layoutVariant: "orbit_avatars",
+          cardStyle: "outline",
           sizePreset: "compact",
         },
       };
@@ -54,12 +57,13 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
       const result = widgetSchema.safeParse(payload);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.themeConfig.layoutVariant).toBe("spotlight");
+        expect(result.data.themeConfig.layoutVariant).toBe("orbit_avatars");
+        expect(result.data.themeConfig.cardStyle).toBe("outline");
         expect(result.data.themeConfig.sizePreset).toBe("compact");
       }
     });
 
-    it("applies sensible defaults when presets are omitted", () => {
+    it("applies sensible defaults when presets are omitted (border default for cardStyle)", () => {
       const payload = {
         name: "Minimal Widget",
         slug: "minimal-widget",
@@ -69,6 +73,7 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
       const result = widgetSchema.safeParse(payload);
       expect(result.success).toBe(true);
       if (result.success) {
+        expect(result.data.themeConfig.cardStyle).toBe("border");
         expect(result.data.themeConfig.layoutVariant).toBe("grid");
         expect(result.data.themeConfig.sizePreset).toBe("standard");
         expect(result.data.themeConfig.paddingDensity).toBe("comfortable");
@@ -76,6 +81,7 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
         expect(result.data.themeConfig.defaultTheme).toBe("light");
         expect(result.data.themeConfig.textReveal).toBe(false);
         expect(result.data.themeConfig.autoRotateInterval).toBe(6);
+        expect(result.data.themeConfig.marqueeSpeed).toBe(35);
       }
     });
 
@@ -93,8 +99,8 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
     });
   });
 
-  describe("2. CSS API Class Layer Sanitization", () => {
-    it("allows valid Custom CSS rules targeting stable clientecho class API including spotlight & marquee", () => {
+  describe("2. CSS API Class Layer Sanitization & Per-Element Target Rules", () => {
+    it("allows valid Custom CSS rules targeting stable clientecho class API including per-badge sub-classes", () => {
       const validCss = `
         .clientecho-card {
           border-radius: 20px;
@@ -107,14 +113,36 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
         .clientecho-author-name {
           font-weight: 800;
         }
+        .clientecho-author-title {
+          font-size: 11px;
+        }
+        .clientecho-avatar {
+          border-radius: 9999px;
+          width: 36px;
+          height: 36px;
+        }
         .clientecho-badge {
           text-transform: uppercase;
         }
+        .clientecho-badge-verified {
+          background-color: #10B981;
+          color: #FFFFFF;
+        }
+        .clientecho-badge-direct {
+          border-color: #6366F1;
+        }
+        .clientecho-badge-self {
+          background-color: rgba(255, 255, 255, 0.05);
+        }
         .clientecho-stars {
+          color: #EAB308;
           gap: 4px;
         }
         .clientecho-spotlight-chips {
           margin-top: 12px;
+        }
+        .clientecho-orbit-row {
+          gap: 12px;
         }
       `;
 
@@ -123,7 +151,10 @@ describe("Pass 13 & Pass 14: Widget Motion, Theme Adaptability, Sizing & Layout 
       expect(result.sanitizedCss).toContain(".clientecho-card");
       expect(result.sanitizedCss).toContain(".clientecho-quote");
       expect(result.sanitizedCss).toContain(".clientecho-badge");
-      expect(result.sanitizedCss).toContain(".clientecho-spotlight-chips");
+      expect(result.sanitizedCss).toContain(".clientecho-badge-verified");
+      expect(result.sanitizedCss).toContain(".clientecho-badge-direct");
+      expect(result.sanitizedCss).toContain(".clientecho-badge-self");
+      expect(result.sanitizedCss).toContain(".clientecho-orbit-row");
     });
 
     it("REJECTS global selector hijacking or external exfiltration attempts", () => {

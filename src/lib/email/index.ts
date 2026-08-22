@@ -1,72 +1,211 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { logger } from "@/lib/logger";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 export const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-function handleEmailSendError(err: any, context: string, recipient: string) {
-  const errMsg = err?.message || String(err);
-  const isRateLimited =
-    err?.statusCode === 429 ||
-    errMsg.toLowerCase().includes("rate limit") ||
-    errMsg.toLowerCase().includes("quota") ||
-    errMsg.toLowerCase().includes("daily");
+function getSmtpTransporter() {
+  const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
 
-  if (isRateLimited) {
-    logger.error(`[RESEND_QUOTA_ALERT] Resend send rate/quota limit reached in ${context}`, err, {
-      recipient,
-      isRateLimited: true,
-      alert: "Resend free tier daily cap (100 emails/day) or rate limit exceeded!",
+  if (gmailUser && gmailAppPassword) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailUser.trim(),
+        pass: gmailAppPassword.replace(/\s+/g, "").trim(),
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
-  } else {
-    logger.error(`Failed to send email via Resend in ${context}`, err, { recipient });
+  }
+  return null;
+}
+
+export function getFromAddress(): string {
+  const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+  if (gmailUser) {
+    return `ClientEcho <${gmailUser.trim()}>`;
+  }
+  const envFrom = process.env.EMAIL_FROM || process.env.RESEND_FROM_ADDRESS;
+  if (envFrom && !envFrom.includes("@clientecho.com")) {
+    return envFrom;
+  }
+  // Default to Resend testing domain if no Gmail SMTP is configured
+  return "ClientEcho <onboarding@resend.dev>";
+}
+
+/**
+ * Universal email dispatcher: routes through Gmail SMTP if configured,
+ * otherwise falls back to Resend API.
+ */
+async function sendEmailMessage(options: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+}): Promise<{ success: boolean; error?: string }> {
+  const fromAddress = getFromAddress();
+  const transporter = getSmtpTransporter();
+
+  // 1. Send via Gmail SMTP if configured (100% Primary Inbox Delivery)
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: fromAddress,
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html,
+        replyTo: options.replyTo,
+        headers: options.headers,
+      });
+      logger.info(`[GMAIL_SMTP] Email delivered to ${options.to}: [${options.subject}]`);
+      return { success: true };
+    } catch (err: any) {
+      logger.error(`[GMAIL_SMTP_ERROR] Failed to send to ${options.to}`, err);
+      return { success: false, error: err?.message || "Failed to send email via Gmail SMTP" };
+    }
   }
 
-  return { success: false, error: errMsg || "Failed to send email" };
+  // 2. Send via Resend API
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: fromAddress,
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html,
+        replyTo: options.replyTo,
+        headers: options.headers,
+      });
+      return { success: true };
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      logger.error(`Failed to send email via Resend`, err, { recipient: options.to });
+      return { success: false, error: errMsg || "Failed to send email" };
+    }
+  }
+
+  // 3. Local / Dev fallback logger
+  logger.info(`[DEV / TEST] Email logged for ${options.to}: [${options.subject}]`);
+  return { success: true };
 }
 
 export async function sendMagicLinkApprovalEmail(params: {
   toEmail: string;
   creatorName: string;
+  creatorEmail?: string;
+  replyToEmail?: string;
   rawToken: string;
   promptMessage?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(params.rawToken)}`;
+  const replyTo = params.replyToEmail || params.creatorEmail;
 
-  if (!resend) {
-    logger.info(`[DEV / TEST] Magic link email for ${params.toEmail}: ${approvalUrl}`);
-    return { success: true };
-  }
+  const plainText = `
+Hi ${params.toEmail.split("@")[0] || "there"},
 
-  try {
-    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
-    await resend.emails.send({
-      from: fromEmail,
-      to: params.toEmail,
-      subject: `${params.creatorName || "A freelancer"} requested a testimonial from you`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #111827;">
-          <h2 style="color: #4f46e5; margin-bottom: 16px;">Testimonial Request</h2>
-          <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-            Hi there! <strong>${params.creatorName || "Your service provider"}</strong> has requested a client testimonial for their work.
-          </p>
-          ${params.promptMessage ? `<blockquote style="border-left: 4px solid #4f46e5; padding-left: 12px; color: #4b5563; font-style: italic; margin-bottom: 24px;">${params.promptMessage}</blockquote>` : ""}
-          <div style="margin: 30px 0;">
-            <a href="${approvalUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-              Review & Approve Testimonial
-            </a>
-          </div>
-          <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
-            If you did not request this email or do not wish to leave a review, you can safely ignore this email.
-          </p>
-        </div>
-      `,
-    });
-    return { success: true };
-  } catch (err: any) {
-    return handleEmailSendError(err, "sendMagicLinkApprovalEmail", params.toEmail);
-  }
+${params.creatorName || "Your service provider"} has shared a draft testimonial with you on ClientEcho.
+
+${params.promptMessage ? `Message from ${params.creatorName}:\n"${params.promptMessage}"\n\n` : ""}You can review the quote, adjust the rating or wording, or approve it with 1 click:
+${approvalUrl}
+
+No account or password is required.
+Sent via ClientEcho Verification Engine.
+If you did not expect this invitation, you can safely ignore this email.
+`.trim();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Testimonial Review</title>
+    </head>
+    <body style="margin: 0; padding: 24px 12px; background-color: #f8f8f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2D2D2D;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e7e7e5; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+        <!-- Header -->
+        <tr>
+          <td style="padding: 32px 32px 20px 32px; border-bottom: 1px solid #f0f0ee; text-align: center;">
+            <div style="font-size: 11px; font-weight: 700; font-family: monospace; text-transform: uppercase; letter-spacing: 0.08em; color: #555555; background-color: #f4f4f2; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 12px;">
+              Testimonial Review
+            </div>
+            <h1 style="font-size: 22px; font-weight: 700; color: #1a1a1a; margin: 0; line-height: 1.3;">
+              Review Request from ${params.creatorName || "Your Service Provider"}
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Body Content -->
+        <tr>
+          <td style="padding: 28px 32px;">
+            <p style="font-size: 15px; line-height: 1.6; color: #3d3d3d; margin: 0 0 20px 0;">
+              Hi there, <strong>${params.creatorName || "your service provider"}</strong> has prepared a quick draft testimonial for your recent work together.
+            </p>
+
+            ${
+              params.promptMessage
+                ? `
+                <div style="background-color: #f9f9f8; border-left: 3px solid #2D2D2D; padding: 14px 18px; margin-bottom: 24px; border-radius: 0 12px 12px 0; font-size: 14px; line-height: 1.6; color: #444444; font-style: italic;">
+                  "${params.promptMessage}"
+                </div>
+                `
+                : ""
+            }
+
+            <p style="font-size: 14px; line-height: 1.5; color: #666666; margin: 0 0 24px 0;">
+              You can edit the wording, adjust the star rating, or approve it with 1 click:
+            </p>
+
+            <!-- CTA Button -->
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 24px 0;">
+              <tr>
+                <td style="background-color: #2D2D2D; border-radius: 12px; text-align: center;">
+                  <a href="${approvalUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 12px;">
+                    Review & Approve Testimonial &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="font-size: 12px; line-height: 1.6; color: #888888; margin: 0;">
+              Or copy and paste this link in your browser:<br>
+              <a href="${approvalUrl}" style="color: #2D2D2D; word-break: break-all; text-decoration: underline;">${approvalUrl}</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 20px 32px; background-color: #fafaf9; border-top: 1px solid #f0f0ee; text-align: center;">
+            <p style="font-size: 12px; color: #888888; line-height: 1.5; margin: 0 0 6px 0;">
+              No password required. Powered by <strong>ClientEcho</strong> public verification.
+            </p>
+            <p style="font-size: 11px; color: #aaaaaa; margin: 0;">
+              Sent to ${params.toEmail}. If you received this by mistake, you can safely ignore it.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmailMessage({
+    to: params.toEmail,
+    replyTo: replyTo || undefined,
+    subject: `${params.creatorName || "Your service provider"} invited you to review a testimonial draft`,
+    text: plainText,
+    html,
+  });
 }
 
 export async function sendNewSubmissionNotificationEmail(params: {
@@ -76,37 +215,24 @@ export async function sendNewSubmissionNotificationEmail(params: {
   content: string;
   widgetName: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.log(`[DEV / TEST] Notification: New testimonial submission from ${params.authorName} on widget ${params.widgetName}`);
-    return { success: true };
-  }
-
-  try {
-    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
-    await resend.emails.send({
-      from: fromEmail,
-      to: params.creatorEmail,
-      subject: `New Testimonial Submitted by ${params.authorName}`,
-      html: `
-        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
-          <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">New Testimonial Submission</h2>
-          <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 16px;">
-            A new client testimonial was submitted for your widget <strong>${params.widgetName}</strong>.
-          </p>
-          <blockquote style="border-left: 4px solid #2D2D2D; padding-left: 14px; color: #444; font-style: italic; margin-bottom: 24px;">
-            "${params.content}" — <strong>${params.authorName}</strong>
-          </blockquote>
-          <p style="font-size: 14px; color: #666;">
-            Log in to your ClientEcho dashboard Approval Queue to review and publish this testimonial.
-          </p>
-        </div>
-      `,
-    });
-    return { success: true };
-  } catch (err: any) {
-    console.error("Failed to send submission notification:", err);
-    return { success: false, error: err.message };
-  }
+  return sendEmailMessage({
+    to: params.creatorEmail,
+    subject: `New Testimonial Submitted by ${params.authorName}`,
+    html: `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
+        <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">New Testimonial Submission</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 16px;">
+          A new client testimonial was submitted for your widget <strong>${params.widgetName}</strong>.
+        </p>
+        <blockquote style="border-left: 4px solid #2D2D2D; padding-left: 14px; color: #444; font-style: italic; margin-bottom: 24px;">
+          "${params.content}" — <strong>${params.authorName}</strong>
+        </blockquote>
+        <p style="font-size: 14px; color: #666;">
+          Log in to your ClientEcho dashboard Approval Queue to review and publish this testimonial.
+        </p>
+      </div>
+    `,
+  });
 }
 
 export async function sendMagicLinkApprovedNotificationEmail(params: {
@@ -116,34 +242,21 @@ export async function sendMagicLinkApprovedNotificationEmail(params: {
   authorName: string;
   widgetName: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.log(`[DEV / TEST] Notification: Magic link approved by ${params.authorName} (${params.clientEmail})`);
-    return { success: true };
-  }
-
-  try {
-    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
-    await resend.emails.send({
-      from: fromEmail,
-      to: params.creatorEmail,
-      subject: `Magic Link Approved by ${params.authorName}!`,
-      html: `
-        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
-          <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Testimonial Approved!</h2>
-          <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 16px;">
-            Great news! <strong>${params.authorName}</strong> (${params.clientEmail}) clicked your 1-click magic link and approved their testimonial for widget <strong>${params.widgetName}</strong>.
-          </p>
-          <p style="font-size: 14px; color: #666;">
-            The approved testimonial is now live in your embed widget.
-          </p>
-        </div>
-      `,
-    });
-    return { success: true };
-  } catch (err: any) {
-    console.error("Failed to send approval notification:", err);
-    return { success: false, error: err.message };
-  }
+  return sendEmailMessage({
+    to: params.creatorEmail,
+    subject: `Magic Link Approved by ${params.authorName}!`,
+    html: `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
+        <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Testimonial Approved!</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 16px;">
+          Great news! <strong>${params.authorName}</strong> (${params.clientEmail}) clicked your 1-click magic link and approved their testimonial for widget <strong>${params.widgetName}</strong>.
+        </p>
+        <p style="font-size: 14px; color: #666;">
+          The approved testimonial is now live in your embed widget.
+        </p>
+      </div>
+    `,
+  });
 }
 
 export async function sendSupportEmail(params: {
@@ -153,33 +266,21 @@ export async function sendSupportEmail(params: {
 }): Promise<{ success: boolean; error?: string }> {
   const supportInbox = process.env.SUPPORT_EMAIL || "support@clientecho.com";
 
-  if (!resend) {
-    console.log(`[DEV / TEST] Support Message from ${params.fromEmail}: [${params.subject}] ${params.message}`);
-    return { success: true };
-  }
-
-  try {
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM || "ClientEcho Support <noreply@clientecho.com>",
-      to: supportInbox,
-      replyTo: params.fromEmail,
-      subject: `[Dashboard Support Query] ${params.subject}`,
-      html: `
-        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D;">
-          <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 12px;">New Dashboard Support Request</h3>
-          <p><strong>From:</strong> ${params.fromEmail}</p>
-          <p><strong>Subject:</strong> ${params.subject}</p>
-          <div style="background-color: #F7FAFC; padding: 16px; border-radius: 12px; margin-top: 16px; font-size: 14px; line-height: 1.6;">
-            ${params.message.replace(/\n/g, "<br/>")}
-          </div>
+  return sendEmailMessage({
+    to: supportInbox,
+    replyTo: params.fromEmail,
+    subject: `[Dashboard Support Query] ${params.subject}`,
+    html: `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D;">
+        <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 12px;">New Dashboard Support Request</h3>
+        <p><strong>From:</strong> ${params.fromEmail}</p>
+        <p><strong>Subject:</strong> ${params.subject}</p>
+        <div style="background-color: #F7FAFC; padding: 16px; border-radius: 12px; margin-top: 16px; font-size: 14px; line-height: 1.6;">
+          ${params.message.replace(/\n/g, "<br/>")}
         </div>
-      `,
-    });
-    return { success: true };
-  } catch (err: any) {
-    console.error("Failed to send support email:", err);
-    return { success: false, error: err.message };
-  }
+      </div>
+    `,
+  });
 }
 
 export async function sendPasswordResetEmail(params: {
@@ -189,39 +290,26 @@ export async function sendPasswordResetEmail(params: {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(params.rawToken)}`;
 
-  if (!resend) {
-    console.log(`[DEV / TEST] Password reset email for ${params.toEmail}: ${resetUrl}`);
-    return { success: true };
-  }
-
-  try {
-    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
-    await resend.emails.send({
-      from: fromEmail,
-      to: params.toEmail,
-      subject: "Reset Your ClientEcho Password",
-      html: `
-        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
-          <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Password Reset Request</h2>
-          <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 24px;">
-            We received a request to reset your password for your ClientEcho workspace. Click the button below to set a new password:
-          </p>
-          <div style="margin: 24px 0;">
-            <a href="${resetUrl}" style="background-color: #2D2D2D; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 12px; font-weight: 600; display: inline-block; font-size: 14px;">
-              Reset Password
-            </a>
-          </div>
-          <p style="font-size: 13px; color: #666; margin-top: 24px; line-height: 1.5;">
-            This link is valid for 45 minutes and can only be used once. If you did not request a password reset, you can safely ignore this email.
-          </p>
+  return sendEmailMessage({
+    to: params.toEmail,
+    subject: "Reset Your ClientEcho Password",
+    html: `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
+        <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Password Reset Request</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 24px;">
+          We received a request to reset your password for your ClientEcho workspace. Click the button below to set a new password:
+        </p>
+        <div style="margin: 24px 0;">
+          <a href="${resetUrl}" style="background-color: #2D2D2D; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 12px; font-weight: 600; display: inline-block; font-size: 14px;">
+            Reset Password
+          </a>
         </div>
-      `,
-    });
-    return { success: true };
-  } catch (err: any) {
-    console.error("Failed to send Password Reset Resend email:", err);
-    return { success: false, error: err.message || "Failed to send reset email" };
-  }
+        <p style="font-size: 13px; color: #666; margin-top: 24px; line-height: 1.5;">
+          This link is valid for 45 minutes and can only be used once. If you did not request a password reset, you can safely ignore this email.
+        </p>
+      </div>
+    `,
+  });
 }
 
 export async function sendEmailVerificationLink(params: {
@@ -231,37 +319,24 @@ export async function sendEmailVerificationLink(params: {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const verifyUrl = `${appUrl}/api/auth/verify-email?token=${encodeURIComponent(params.rawToken)}`;
 
-  if (!resend) {
-    console.log(`[DEV / TEST] Email verification link for ${params.toEmail}: ${verifyUrl}`);
-    return { success: true };
-  }
-
-  try {
-    const fromEmail = process.env.EMAIL_FROM || "ClientEcho <noreply@clientecho.com>";
-    await resend.emails.send({
-      from: fromEmail,
-      to: params.toEmail,
-      subject: "Activate Your ClientEcho Workspace",
-      html: `
-        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
-          <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Verify Your Email Address</h2>
-          <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 24px;">
-            Thank you for creating your ClientEcho workspace! Click below to verify your email address and activate your account.
-          </p>
-          <div style="margin: 24px 0;">
-            <a href="${verifyUrl}" style="background-color: #2D2D2D; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 12px; font-weight: 600; display: inline-block; font-size: 14px;">
-              Verify Email Address
-            </a>
-          </div>
-          <p style="font-size: 13px; color: #666; margin-top: 24px; line-height: 1.5;">
-            This link expires in 24 hours. If you did not create a ClientEcho account, no further action is required.
-          </p>
+  return sendEmailMessage({
+    to: params.toEmail,
+    subject: "Activate Your ClientEcho Workspace",
+    html: `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #2D2D2D; background-color: #ffffff;">
+        <h2 style="color: #2D2D2D; font-size: 20px; font-weight: bold; margin-bottom: 16px;">Verify Your Email Address</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #33363B; margin-bottom: 24px;">
+          Thank you for creating your ClientEcho workspace! Click below to verify your email address and activate your account.
+        </p>
+        <div style="margin: 24px 0;">
+          <a href="${verifyUrl}" style="background-color: #2D2D2D; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 12px; font-weight: 600; display: inline-block; font-size: 14px;">
+            Verify Email Address
+          </a>
         </div>
-      `,
-    });
-    return { success: true };
-  } catch (err: any) {
-    console.error("Failed to send Verification email:", err);
-    return { success: false, error: err.message || "Failed to send verification email" };
-  }
+        <p style="font-size: 13px; color: #666; margin-top: 24px; line-height: 1.5;">
+          This link expires in 24 hours. If you did not create a ClientEcho account, no further action is required.
+        </p>
+      </div>
+    `,
+  });
 }

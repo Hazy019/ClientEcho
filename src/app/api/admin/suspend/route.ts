@@ -37,20 +37,30 @@ export async function POST(request: NextRequest) {
       .from(creators)
       .where(eq(creators.email, targetEmail));
 
-    const targetId = creator ? creator.id : targetEmail;
+    // Perform atomic transaction: mark creator subscription status as suspended and log to immutable audit trail
+    await db.transaction(async (tx) => {
+      if (creator) {
+        await tx
+          .update(creators)
+          .set({
+            subscriptionStatus: "suspended",
+            updatedAt: new Date(),
+          })
+          .where(eq(creators.id, creator.id));
+      }
 
-    // Log to immutable admin audit trail
-    await db.insert(adminAuditLog).values({
-      adminId: user.email || user.id,
-      action: "ACCOUNT_SUSPENSION",
-      targetType: "creator_account",
-      targetId: targetId,
-      details: {
-        reason: reason || "Flagged for abusive public form submissions / terms violation",
-        targetEmail: targetEmail,
-        timestamp: new Date().toISOString(),
-      },
-      ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "Unknown",
+      await tx.insert(adminAuditLog).values({
+        adminId: user.email || user.id,
+        action: "ACCOUNT_SUSPENSION",
+        targetType: "creator_account",
+        targetId: creator?.id || targetEmail,
+        details: {
+          reason: reason || "Flagged for abusive public form submissions / terms violation",
+          targetEmail: targetEmail,
+          timestamp: new Date().toISOString(),
+        },
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "Unknown",
+      });
     });
 
     return NextResponse.json({

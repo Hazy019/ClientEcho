@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Star, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
-import { useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import BlurText from "@/components/react-bits/BlurText";
 import RotatingText from "@/components/react-bits/RotatingText";
 
@@ -52,13 +52,23 @@ export default function WidgetDisplayClient({
   const [systemIsDark, setSystemIsDark] = useState<boolean>(false);
   const prefersReducedMotion = useReducedMotion();
 
+  // Synchronize themeMode whenever initialTheme or configuredDefaultTheme changes
+  useEffect(() => {
+    if (initialTheme === "dark" || initialTheme === "light" || initialTheme === "auto") {
+      setThemeMode(initialTheme);
+    } else if (configuredDefaultTheme) {
+      setThemeMode(configuredDefaultTheme);
+    }
+  }, [initialTheme, configuredDefaultTheme]);
+
   // Primary & Accent Colors
   const primaryColor = theme.primaryColor || "#2D2D2D";
   const accentColor = theme.accentColor || primaryColor;
-  const cardStyle = theme.cardStyle || "border"; // "minimal", "border", "glass"
+  const cardStyle = theme.cardStyle || "border"; // "border", "minimal", "glass", "transparent", "outline"
   const fontPairing = theme.fontPairing || "Manrope"; // "Syne", "Manrope", "Inter", "Roboto", "Outfit"
-  const layoutVariant = theme.layoutVariant || "grid"; // "grid", "carousel", "rotator", "marquee", "spotlight"
+  const layoutVariant = theme.layoutVariant || "grid"; // "grid", "carousel", "rotator", "marquee", "spotlight", "stacked_deck", "orbit_avatars"
   const customCss = theme.customCss || "";
+  const marqueeSpeed = Math.max(8, Number(theme.marqueeSpeed) || 35);
 
   // Sizing Presets & Max-Width
   const sizePreset = theme.sizePreset || "standard";
@@ -130,47 +140,75 @@ export default function WidgetDisplayClient({
 
   // Dark & Light theme token sets
   const isDark = effectiveTheme === "dark";
-  const currentBg = isDark ? "#1A1A1D" : (theme.backgroundColor || "#FFFFFF");
+  const currentBg = theme.backgroundColor || "transparent";
   const currentTextColor = isDark ? "#F3F3EF" : (theme.textColor || "#2D2D2D");
   const currentTextSecondary = isDark ? "rgba(243, 243, 239, 0.65)" : "rgba(45, 45, 45, 0.65)";
   const currentBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(45, 45, 45, 0.1)";
 
   const currentCardBg = useMemo(() => {
+    if (cardStyle === "transparent" || cardStyle === "outline") {
+      return "transparent";
+    }
     if (isDark) {
       return cardStyle === "glass"
         ? "rgba(35, 35, 38, 0.75)"
         : cardStyle === "border"
         ? "#232326"
-        : "#2A2A2E";
+        : "#2A2A2E"; // minimal
     }
     return cardStyle === "glass"
       ? "rgba(255, 255, 255, 0.7)"
       : cardStyle === "border"
       ? "#FFFFFF"
-      : "#F9FAFB";
+      : "#F9FAFB"; // minimal
   }, [isDark, cardStyle]);
 
-  const currentShadow = useMemo(() => {
-    if (shadowIntensity === "none") return "none";
+  const computedBorder = useMemo(() => {
+    if (cardStyle === "transparent" || cardStyle === "minimal") {
+      return "transparent";
+    }
+    return currentBorder;
+  }, [cardStyle, currentBorder]);
+
+  const computedShadow = useMemo(() => {
+    if (shadowIntensity === "none" || cardStyle === "transparent" || cardStyle === "outline") {
+      return "none";
+    }
     if (isDark) {
       return shadowIntensity === "pronounced"
         ? "0 12px 30px rgba(0, 0, 0, 0.6)"
         : "0 4px 20px rgba(0, 0, 0, 0.4)";
     }
     return shadowIntensity === "pronounced"
-      ? "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
-      : "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)";
-  }, [shadowIntensity, isDark]);
+      ? "0 12px 30px rgba(0, 0, 0, 0.12)"
+      : "0 4px 20px rgba(0, 0, 0, 0.05)";
+  }, [isDark, cardStyle, shadowIntensity]);
 
-  // Rotator / Spotlight active index state
+  const cardStyleClasses = useMemo(() => {
+    switch (cardStyle) {
+      case "glass":
+        return "backdrop-blur-md";
+      case "minimal":
+        return "";
+      case "transparent":
+        return "bg-transparent";
+      case "outline":
+        return "bg-transparent";
+      case "border":
+      default:
+        return "";
+    }
+  }, [cardStyle]);
+
+  // Rotator / Spotlight / Stacked Deck / Orbit active index state
   const [activeIndex, setActiveIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
+  const [direction, setDirection] = useState<number>(1);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Auto-advance rotator / spotlight interval with pause-on-hover
+  // Auto-advance rotator / spotlight / stacked deck interval with pause-on-hover
   useEffect(() => {
     if (
-      (layoutVariant !== "rotator" && layoutVariant !== "spotlight") ||
+      (layoutVariant !== "rotator" && layoutVariant !== "spotlight" && layoutVariant !== "stacked_deck") ||
       testimonials.length <= 1 ||
       isHovered
     )
@@ -183,22 +221,24 @@ export default function WidgetDisplayClient({
     return () => clearInterval(timer);
   }, [layoutVariant, testimonials.length, isHovered, autoRotateInterval]);
 
-  const handleNext = () => {
-    setDirection(1);
-    setActiveIndex((prev) => (prev + 1) % testimonials.length);
-  };
-
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
+    if (testimonials.length <= 1) return;
     setDirection(-1);
-    setActiveIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
-  };
+    setActiveIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
+  }, [testimonials.length]);
+
+  const handleNext = useCallback(() => {
+    if (testimonials.length <= 1) return;
+    setDirection(1);
+    setActiveIndex((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
+  }, [testimonials.length]);
 
   // Carousel navigation handlers
   const handleScrollCarousel = (dir: "left" | "right") => {
     if (carouselTrackRef.current) {
-      const scrollAmount = isCompact ? 240 : 320;
+      const scrollAmount = 320;
       carouselTrackRef.current.scrollBy({
-        left: dir === "right" ? scrollAmount : -scrollAmount,
+        left: dir === "left" ? -scrollAmount : scrollAmount,
         behavior: prefersReducedMotion ? "auto" : "smooth",
       });
     }
@@ -222,13 +262,13 @@ export default function WidgetDisplayClient({
   }, [testimonials, activeIndex, layoutVariant, cardStyle, paddingDensity, themeMode, effectiveTheme, sizePreset]);
 
   const fontMap: Record<string, string> = {
-    Syne: "var(--font-syne), sans-serif",
-    Manrope: "var(--font-manrope), sans-serif",
-    Inter: "var(--font-inter), sans-serif",
-    Roboto: "var(--font-roboto), sans-serif",
-    Outfit: "var(--font-outfit), sans-serif",
+    Syne: "var(--font-syne), 'Syne', sans-serif",
+    Manrope: "var(--font-manrope), 'Manrope', sans-serif",
+    Inter: "var(--font-inter), 'Inter', sans-serif",
+    Roboto: "var(--font-roboto), 'Roboto', sans-serif",
+    Outfit: "var(--font-outfit), 'Outfit', sans-serif",
   };
-  const activeFontFamily = fontMap[fontPairing] || "var(--font-manrope), sans-serif";
+  const activeFontFamily = fontMap[fontPairing] || "var(--font-manrope), 'Manrope', sans-serif";
 
   // Duplicate testimonials for continuous marquee scrolling
   const marqueeItems = useMemo(() => {
@@ -242,6 +282,7 @@ export default function WidgetDisplayClient({
     <div
       ref={containerRef}
       id="clientecho-widget"
+      data-theme={effectiveTheme}
       style={{
         backgroundColor: currentBg,
         color: currentTextColor,
@@ -249,9 +290,160 @@ export default function WidgetDisplayClient({
         maxWidth: currentMaxWidth,
         width: "100%",
         margin: "0 auto",
+        ["--ce-primary" as any]: primaryColor,
+        ["--ce-accent" as any]: accentColor,
+        ["--ce-bg" as any]: currentBg,
+        ["--ce-text" as any]: currentTextColor,
+        ["--ce-text-secondary" as any]: currentTextSecondary,
+        ["--ce-border" as any]: computedBorder,
+        ["--ce-card-bg" as any]: currentCardBg,
+        ["--ce-card-border" as any]: computedBorder,
+        ["--ce-card-radius" as any]: borderRadius,
+        ["--ce-card-padding" as any]: cardPadding,
+        ["--ce-card-shadow" as any]: computedShadow,
+        ["--ce-star-color" as any]: accentColor,
+        ["--ce-badge-bg" as any]: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+        ["--ce-badge-border" as any]: currentBorder,
+        ["--ce-badge-text" as any]: currentTextColor,
+        ["--ce-badge-verified-bg" as any]: accentColor,
+        ["--ce-badge-verified-text" as any]: "#FFFFFF",
+        ["--ce-badge-direct-bg" as any]: isDark ? "rgba(255, 255, 255, 0.05)" : "transparent",
+        ["--ce-badge-direct-border" as any]: currentBorder,
+        ["--ce-badge-direct-text" as any]: currentTextColor,
+        ["--ce-badge-self-bg" as any]: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
+        ["--ce-badge-self-border" as any]: currentBorder,
+        ["--ce-badge-self-text" as any]: currentTextColor,
+        ["--ce-avatar-bg" as any]: primaryColor,
+        ["--ce-avatar-text" as any]: "#FFFFFF",
+        ["--ce-avatar-border" as any]: "transparent",
+        ["--ce-avatar-size" as any]: isCompact ? "24px" : isLarge ? "36px" : "32px",
+        ["--ce-star-stroke" as any]: "currentColor",
+        ["--ce-quote-font-size" as any]: isCompact ? "13px" : isLarge ? "16px" : "14px",
+        ["--ce-author-name-font-size" as any]: isCompact ? "12px" : "13px",
+        ["--ce-author-title-font-size" as any]: "10px",
       }}
-      className={`clientecho-widget clientecho-theme-${effectiveTheme} p-4 antialiased text-sm leading-relaxed relative min-h-[120px] transition-colors duration-200`}
+      className={`clientecho-widget clientecho-theme-${effectiveTheme} antialiased text-sm leading-relaxed relative min-h-[120px] transition-colors duration-200`}
     >
+      {/* Baseline Scoped CSS allowing custom CSS overrides without inline specificity collisions */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            #clientecho-widget,
+            #clientecho-widget * {
+              font-family: inherit;
+            }
+            .clientecho-card {
+              background-color: var(--ce-card-bg);
+              border-color: var(--ce-card-border);
+              border-style: solid;
+              border-width: 1px;
+              border-radius: var(--ce-card-radius);
+              padding: var(--ce-card-padding);
+              box-shadow: var(--ce-card-shadow);
+            }
+            .clientecho-stars {
+              color: var(--ce-star-color);
+              stroke: var(--ce-star-stroke, currentColor);
+            }
+            .clientecho-star {
+              transition: color 0.15s ease, fill 0.15s ease, stroke 0.15s ease;
+              stroke: inherit;
+            }
+            .clientecho-quote {
+              font-family: inherit;
+              color: var(--ce-text);
+              font-size: var(--ce-quote-font-size, 14px);
+              font-style: normal;
+              line-height: 1.6;
+            }
+            .clientecho-quote-mark {
+              color: var(--ce-quote-mark-color, inherit);
+              font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+              font-style: normal;
+              font-weight: 700;
+              line-height: 1;
+              display: inline;
+            }
+            .clientecho-author-name {
+              font-family: inherit;
+              color: var(--ce-text);
+              font-size: var(--ce-author-name-font-size, 13px);
+              font-weight: 700;
+            }
+            .clientecho-author-title {
+              font-family: inherit;
+              color: var(--ce-text-secondary);
+              font-size: var(--ce-author-title-font-size, 10px);
+              font-weight: 400;
+            }
+            .clientecho-badge {
+              background-color: var(--ce-badge-bg);
+              border-color: var(--ce-badge-border);
+              color: var(--ce-badge-text);
+            }
+            .clientecho-badge-verified {
+              background-color: var(--ce-badge-verified-bg);
+              color: var(--ce-badge-verified-text);
+            }
+            .clientecho-badge-direct {
+              background-color: var(--ce-badge-direct-bg);
+              border-color: var(--ce-badge-direct-border);
+              color: var(--ce-badge-direct-text);
+            }
+            .clientecho-badge-self {
+              background-color: var(--ce-badge-self-bg);
+              border-color: var(--ce-badge-self-border);
+              color: var(--ce-badge-self-text);
+            }
+            .clientecho-avatar {
+              background-color: var(--ce-avatar-bg, var(--ce-primary));
+              color: var(--ce-avatar-text, #FFFFFF);
+              border-color: var(--ce-avatar-border, transparent);
+              border-style: solid;
+              border-width: 0px;
+              border-radius: 9999px;
+              width: var(--ce-avatar-size, 32px);
+              height: var(--ce-avatar-size, 32px);
+            }
+            .clientecho-rotator-nav {
+              border-color: var(--ce-border);
+            }
+            .clientecho-rotator-counter {
+              color: var(--ce-text-secondary);
+            }
+            .clientecho-rotator-btn, .clientecho-carousel-btn {
+              background-color: var(--ce-nav-btn-bg, ${isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)"});
+              border-color: var(--ce-nav-btn-border, var(--ce-border));
+              color: var(--ce-nav-btn-color, var(--ce-text));
+              border-radius: 12px;
+            }
+            .clientecho-spotlight-chips {
+              gap: 8px;
+            }
+            .clientecho-spotlight-chip {
+              background-color: transparent;
+              border-color: var(--ce-border);
+              color: var(--ce-text);
+              border-radius: 9999px;
+            }
+            .clientecho-spotlight-chip.clientecho-chip-active {
+              background-color: var(--ce-chip-active-bg, ${isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.06)"});
+              border-color: var(--ce-chip-active-border, var(--ce-accent));
+            }
+            .clientecho-orbit-row {
+              gap: 12px;
+            }
+            .clientecho-orbit-btn {
+              border-radius: 9999px;
+            }
+            .clientecho-orbit-btn.clientecho-orbit-active {
+              outline: 2px solid var(--ce-orbit-active-outline, var(--ce-accent));
+              outline-offset: 2px;
+            }
+          `,
+        }}
+      />
+
       {/* Scoped Custom CSS Injection */}
       {customCss && (
         <style dangerouslySetInnerHTML={{ __html: customCss.replace(/<[^>]*>?/gm, "") }} />
@@ -269,9 +461,9 @@ export default function WidgetDisplayClient({
               .clientecho-marquee-track {
                 display: flex;
                 width: max-content;
-                animation: clientecho-marquee-scroll ${Math.max(16, testimonials.length * 7)}s linear infinite;
+                animation: clientecho-marquee-scroll ${marqueeSpeed}s linear infinite;
               }
-              .clientecho-marquee-container:hover .clientecho-marquee-track {
+              .clientecho-marquee-track:hover {
                 animation-play-state: paused;
               }
             `,
@@ -285,25 +477,20 @@ export default function WidgetDisplayClient({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Rotator Top Navigation Bar */}
+          {/* Rotator Top Navigation Bar with 44px touch targets */}
           {layoutVariant === "rotator" && testimonials.length > 1 && (
             <div
               className="clientecho-rotator-nav flex items-center justify-between pb-2 border-b transition-colors"
               style={{ borderColor: currentBorder }}
             >
-              <span className="text-xs font-mono font-semibold" style={{ color: currentTextSecondary }}>
+              <span className="clientecho-rotator-counter text-xs font-mono font-semibold">
                 Testimonial {activeIndex + 1} of {testimonials.length}
               </span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="p-1.5 rounded-lg border transition hover:opacity-80 active:scale-95 cursor-pointer"
-                  style={{
-                    color: currentTextColor,
-                    borderColor: currentBorder,
-                    backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
-                  }}
+                  className="clientecho-rotator-btn min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-xl border transition hover:opacity-80 active:scale-95 cursor-pointer touch-manipulation"
                   aria-label="Previous testimonial"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -311,12 +498,7 @@ export default function WidgetDisplayClient({
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="p-1.5 rounded-lg border transition hover:opacity-80 active:scale-95 cursor-pointer"
-                  style={{
-                    color: currentTextColor,
-                    borderColor: currentBorder,
-                    backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
-                  }}
+                  className="clientecho-rotator-btn min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-xl border transition hover:opacity-80 active:scale-95 cursor-pointer touch-manipulation"
                   aria-label="Next testimonial"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -325,34 +507,24 @@ export default function WidgetDisplayClient({
             </div>
           )}
 
-          {/* Carousel Top Navigation Bar */}
+          {/* Carousel Top Navigation Bar with 44px touch targets */}
           {layoutVariant === "carousel" && testimonials.length > 2 && (
             <div className="clientecho-carousel-nav flex items-center justify-end gap-1.5 pb-1">
               <button
                 type="button"
                 onClick={() => handleScrollCarousel("left")}
-                className="p-1.5 rounded-lg border transition hover:opacity-80 active:scale-95 cursor-pointer"
-                style={{
-                  color: currentTextColor,
-                  borderColor: currentBorder,
-                  backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
-                }}
+                className="clientecho-carousel-btn min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-xl border transition hover:opacity-80 active:scale-95 cursor-pointer touch-manipulation"
                 aria-label="Scroll left"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => handleScrollCarousel("right")}
-                className="p-1.5 rounded-lg border transition hover:opacity-80 active:scale-95 cursor-pointer"
-                style={{
-                  color: currentTextColor,
-                  borderColor: currentBorder,
-                  backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
-                }}
+                className="clientecho-carousel-btn min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-xl border transition hover:opacity-80 active:scale-95 cursor-pointer touch-manipulation"
                 aria-label="Scroll right"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -369,20 +541,7 @@ export default function WidgetDisplayClient({
                 direction={direction}
               >
                 <div
-                  style={{
-                    borderRadius,
-                    padding: cardPadding,
-                    backgroundColor: currentCardBg,
-                    borderColor: currentBorder,
-                    boxShadow: currentShadow,
-                  }}
-                  className={`clientecho-card transition-all duration-200 ${
-                    cardStyle === "glass"
-                      ? "backdrop-blur-md border"
-                      : cardStyle === "border"
-                      ? "border"
-                      : ""
-                  }`}
+                  className={`clientecho-card transition-all duration-200 ${cardStyleClasses}`}
                 >
                   <CardContent
                     item={testimonials[activeIndex % testimonials.length]}
@@ -414,20 +573,7 @@ export default function WidgetDisplayClient({
                 direction={direction}
               >
                 <div
-                  style={{
-                    borderRadius,
-                    padding: cardPadding,
-                    backgroundColor: currentCardBg,
-                    borderColor: currentBorder,
-                    boxShadow: currentShadow,
-                  }}
-                  className={`clientecho-card transition-all duration-200 ${
-                    cardStyle === "glass"
-                      ? "backdrop-blur-md border"
-                      : cardStyle === "border"
-                      ? "border"
-                      : ""
-                  }`}
+                  className={`clientecho-card transition-all duration-200 ${cardStyleClasses}`}
                 >
                   <CardContent
                     item={testimonials[activeIndex % testimonials.length]}
@@ -445,9 +591,9 @@ export default function WidgetDisplayClient({
                 </div>
               </RotatingText>
 
-              {/* Reviewer Selection Chips */}
+              {/* Reviewer Selection Chips with 44px min touch target */}
               {testimonials.length > 1 && (
-                <div className="clientecho-spotlight-chips flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <div className="clientecho-spotlight-chips flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none max-w-full touch-pan-x">
                   {testimonials.map((t, idx) => {
                     const isSelected = idx === activeIndex % testimonials.length;
                     return (
@@ -458,30 +604,21 @@ export default function WidgetDisplayClient({
                           setDirection(idx > activeIndex ? 1 : -1);
                           setActiveIndex(idx);
                         }}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition shrink-0 cursor-pointer ${
+                        className={`clientecho-spotlight-chip flex items-center gap-2 px-3 py-2 min-h-[44px] border text-xs font-semibold transition shrink-0 cursor-pointer touch-manipulation ${
                           isSelected
-                            ? "shadow-sm scale-102"
-                            : "opacity-60 hover:opacity-90"
+                            ? "clientecho-chip-active shadow-sm scale-102"
+                            : "clientecho-chip-inactive opacity-60 hover:opacity-90"
                         }`}
-                        style={{
-                          backgroundColor: isSelected
-                            ? isDark
-                              ? "rgba(255, 255, 255, 0.12)"
-                              : "rgba(0, 0, 0, 0.06)"
-                            : "transparent",
-                          borderColor: isSelected ? accentColor : currentBorder,
-                          color: currentTextColor,
-                        }}
                       >
                         {t.authorAvatarUrl ? (
                           <img
                             src={t.authorAvatarUrl}
                             alt={t.authorName}
-                            className="w-4 h-4 rounded-full object-cover"
+                            className="w-5 h-5 rounded-full object-cover"
                           />
                         ) : (
                           <span
-                            className="w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold text-white"
+                            className="w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold text-white"
                             style={{ backgroundColor: primaryColor }}
                           >
                             {t.authorName.charAt(0)}
@@ -496,7 +633,189 @@ export default function WidgetDisplayClient({
             </div>
           )}
 
-          {/* 3. Marquee Layout (Continuous Auto-Scrolling Ticker) */}
+          {/* 3. Stacked Deck Layout (Overlapping Cards with Touch Swipe & Click Transition) */}
+          {layoutVariant === "stacked_deck" && (
+            <div
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              className="relative pt-2 pb-6 min-h-[220px]"
+            >
+              <div className="relative w-full">
+                {/* 3rd Card in Deck (if >= 3) */}
+                {testimonials.length > 2 && (
+                  <div
+                    style={{
+                      transform: "scale(0.90) translateY(20px)",
+                      opacity: 0.6,
+                      zIndex: 10,
+                    }}
+                    className={`clientecho-card absolute inset-0 transition-all duration-300 pointer-events-none ${cardStyleClasses}`}
+                  >
+                    <CardContent
+                      item={testimonials[(activeIndex + 2) % testimonials.length]}
+                      accentColor={accentColor}
+                      primaryColor={primaryColor}
+                      currentTextColor={currentTextColor}
+                      currentTextSecondary={currentTextSecondary}
+                      currentBorder={currentBorder}
+                      isDark={isDark}
+                      isCompact={isCompact}
+                      isLarge={isLarge}
+                      textReveal={false}
+                    />
+                  </div>
+                )}
+
+                {/* 2nd Card in Deck (if >= 2) */}
+                {testimonials.length > 1 && (
+                  <div
+                    style={{
+                      transform: "scale(0.95) translateY(10px)",
+                      opacity: 0.85,
+                      zIndex: 20,
+                    }}
+                    className={`clientecho-card absolute inset-0 transition-all duration-300 pointer-events-none ${cardStyleClasses}`}
+                  >
+                    <CardContent
+                      item={testimonials[(activeIndex + 1) % testimonials.length]}
+                      accentColor={accentColor}
+                      primaryColor={primaryColor}
+                      currentTextColor={currentTextColor}
+                      currentTextSecondary={currentTextSecondary}
+                      currentBorder={currentBorder}
+                      isDark={isDark}
+                      isCompact={isCompact}
+                      isLarge={isLarge}
+                      textReveal={false}
+                    />
+                  </div>
+                )}
+
+                {/* Top Interactive Card with Touch/Swipe Gestures & Click Next */}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${testimonials[activeIndex % testimonials.length]?.id}-${replayKey || 0}`}
+                    initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -16, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: direction * 40, rotateZ: direction * 3 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    drag={testimonials.length > 1 ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragSnapToOrigin={true}
+                    dragElastic={0.35}
+                    onDragEnd={(_e, info) => {
+                      if (testimonials.length <= 1) return;
+                      if (info.offset.x < -40 || info.velocity.x < -250) {
+                        handleNext();
+                      } else if (info.offset.x > 40 || info.velocity.x > 250) {
+                        handlePrev();
+                      }
+                    }}
+                    style={{
+                      zIndex: 30,
+                      touchAction: "pan-y",
+                    }}
+                    className={`clientecho-card relative transition-colors duration-200 cursor-grab active:cursor-grabbing select-none ${cardStyleClasses}`}
+                    onClick={testimonials.length > 1 ? handleNext : undefined}
+                    title={testimonials.length > 1 ? "Click or swipe card horizontally" : undefined}
+                  >
+                    <CardContent
+                      item={testimonials[activeIndex % testimonials.length]}
+                      accentColor={accentColor}
+                      primaryColor={primaryColor}
+                      currentTextColor={currentTextColor}
+                      currentTextSecondary={currentTextSecondary}
+                      currentBorder={currentBorder}
+                      isDark={isDark}
+                      isCompact={isCompact}
+                      isLarge={isLarge}
+                      textReveal={textReveal}
+                      replayKey={replayKey}
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Orbit Avatars Layout (Faces Row + Animated Active Card) */}
+          {layoutVariant === "orbit_avatars" && (
+            <div
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              className="space-y-4"
+            >
+              {/* Prominent Circular Avatar Row with 44px min touch target & smooth mobile scrolling */}
+              <div className="clientecho-orbit-row flex items-center justify-start sm:justify-center gap-3 overflow-x-auto py-2 px-2 scrollbar-none max-w-full touch-pan-x">
+                {testimonials.map((t, idx) => {
+                  const isSelected = idx === activeIndex % testimonials.length;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onMouseEnter={() => {
+                        setDirection(idx > activeIndex ? 1 : -1);
+                        setActiveIndex(idx);
+                      }}
+                      onClick={() => {
+                        setDirection(idx > activeIndex ? 1 : -1);
+                        setActiveIndex(idx);
+                      }}
+                      className={`clientecho-orbit-btn relative p-1 min-w-[44px] min-h-[44px] flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation ${
+                        isSelected
+                          ? "clientecho-orbit-active scale-115 shadow-md"
+                          : "clientecho-orbit-inactive opacity-60 hover:opacity-100 hover:scale-105"
+                      }`}
+                      title={`${t.authorName}${t.authorTitle ? ` — ${t.authorTitle}` : ""}`}
+                    >
+                      {t.authorAvatarUrl ? (
+                        <img
+                          src={t.authorAvatarUrl}
+                          alt={t.authorName}
+                          className="clientecho-orbit-avatar w-10 h-10 rounded-full object-cover border border-white/20"
+                        />
+                      ) : (
+                        <div
+                          className="clientecho-orbit-avatar w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs text-white"
+                          style={{ backgroundColor: isSelected ? accentColor : primaryColor }}
+                        >
+                          {t.authorName.charAt(0)}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Testimonial Card */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${testimonials[activeIndex % testimonials.length]?.id}-${replayKey || 0}`}
+                  initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className={`clientecho-card transition-colors duration-200 ${cardStyleClasses}`}
+                >
+                  <CardContent
+                    item={testimonials[activeIndex % testimonials.length]}
+                    accentColor={accentColor}
+                    primaryColor={primaryColor}
+                    currentTextColor={currentTextColor}
+                    currentTextSecondary={currentTextSecondary}
+                    currentBorder={currentBorder}
+                    isDark={isDark}
+                    isCompact={isCompact}
+                    isLarge={isLarge}
+                    textReveal={textReveal}
+                    replayKey={replayKey}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* 5. Marquee Layout (Continuous Auto-Scrolling Ticker with Responsive Card Widths) */}
           {layoutVariant === "marquee" && (
             <div
               className="clientecho-marquee-container overflow-hidden relative py-1"
@@ -508,21 +827,10 @@ export default function WidgetDisplayClient({
                   <div
                     key={`${item.id}-${idx}`}
                     style={{
-                      borderRadius,
-                      padding: cardPadding,
-                      backgroundColor: currentCardBg,
-                      borderColor: currentBorder,
-                      boxShadow: currentShadow,
-                      width: isCompact ? "240px" : "320px",
+                      width: isCompact ? "min(240px, calc(100vw - 48px))" : "min(320px, calc(100vw - 48px))",
                       flexShrink: 0,
                     }}
-                    className={`clientecho-card transition-all duration-200 ${
-                      cardStyle === "glass"
-                        ? "backdrop-blur-md border"
-                        : cardStyle === "border"
-                        ? "border"
-                        : ""
-                    }`}
+                    className={`clientecho-card transition-all duration-200 ${cardStyleClasses}`}
                   >
                     <CardContent
                       item={item}
@@ -543,7 +851,7 @@ export default function WidgetDisplayClient({
             </div>
           )}
 
-          {/* 4. Grid & Carousel Layouts */}
+          {/* 6. Grid & Carousel Layouts with Mobile Responsive Breakpoints */}
           {(layoutVariant === "grid" || layoutVariant === "carousel") && (
             <div
               ref={carouselTrackRef}
@@ -556,7 +864,7 @@ export default function WidgetDisplayClient({
               }
               className={
                 layoutVariant === "carousel"
-                  ? "clientecho-carousel-track flex overflow-x-auto gap-4 pb-3 scrollbar-none snap-x snap-mandatory scroll-smooth"
+                  ? "clientecho-carousel-track flex overflow-x-auto gap-4 pb-3 scrollbar-none snap-x snap-mandatory scroll-smooth touch-pan-x"
                   : isCompact
                   ? "clientecho-grid-track grid grid-cols-1 gap-3"
                   : "clientecho-grid-track grid grid-cols-1 md:grid-cols-2 gap-4"
@@ -566,24 +874,13 @@ export default function WidgetDisplayClient({
                 <div
                   key={item.id}
                   style={{
-                    borderRadius,
-                    padding: cardPadding,
-                    backgroundColor: currentCardBg,
-                    borderColor: currentBorder,
-                    boxShadow: currentShadow,
-                    minWidth: layoutVariant === "carousel" ? (isCompact ? "240px" : "290px") : undefined,
-                    maxWidth: layoutVariant === "carousel" ? (isCompact ? "280px" : "360px") : undefined,
+                    minWidth: layoutVariant === "carousel" ? (isCompact ? "min(240px, calc(100% - 24px))" : "min(290px, calc(100% - 24px))") : undefined,
+                    maxWidth: layoutVariant === "carousel" ? (isCompact ? "280px" : "min(360px, calc(100% - 24px))") : undefined,
                     scrollSnapAlign: layoutVariant === "carousel" ? "start" : undefined,
                   }}
                   className={`clientecho-card transition-all duration-200 ${
                     layoutVariant === "carousel" ? "snap-start flex-shrink-0" : ""
-                  } ${
-                    cardStyle === "glass"
-                      ? "backdrop-blur-md border"
-                      : cardStyle === "border"
-                      ? "border"
-                      : ""
-                  }`}
+                  } ${cardStyleClasses}`}
                 >
                   <CardContent
                     item={item}
@@ -608,7 +905,7 @@ export default function WidgetDisplayClient({
   );
 }
 
-// Sub-component for individual card content with stable classes
+// Sub-component for individual card content with non-blocking CSS variable styling
 function CardContent({
   item,
   accentColor,
@@ -636,49 +933,53 @@ function CardContent({
 }) {
   return (
     <>
-      {/* Rating Stars */}
+      {/* Rating Stars with inherit / currentColor support for custom CSS overrides */}
       {item.rating && (
         <div className={`clientecho-stars flex items-center gap-1 ${isCompact ? "mb-1.5" : "mb-2.5"}`}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              className={isCompact ? "w-3.5 h-3.5" : "w-4 h-4"}
-              style={{
-                fill: i < (item.rating || 0) ? accentColor : "transparent",
-                color:
-                  i < (item.rating || 0)
-                    ? accentColor
+          {Array.from({ length: 5 }).map((_, i) => {
+            const isActive = i < (item.rating || 0);
+            return (
+              <Star
+                key={i}
+                className={`clientecho-star ${isCompact ? "w-3.5 h-3.5" : "w-4 h-4"}`}
+                style={{
+                  fill: isActive ? "currentColor" : "transparent",
+                  color: isActive
+                    ? "inherit"
                     : isDark
                     ? "rgba(255, 255, 255, 0.15)"
                     : "rgba(45, 45, 45, 0.2)",
-              }}
-            />
-          ))}
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
-      {/* Quote Content (with React Bits BlurText reveal option) */}
+      {/* Quote Content with baseline CSS typography & elegant curly quotation marks */}
       {textReveal ? (
         <div
-          className={`clientecho-quote mb-4 whitespace-pre-line leading-relaxed font-normal ${
-            isCompact ? "text-xs mb-2.5" : isLarge ? "text-base" : "text-sm"
+          className={`clientecho-quote mb-4 whitespace-pre-line leading-relaxed break-words ${
+            isCompact ? "mb-2.5" : "mb-4"
           }`}
-          style={{ color: currentTextColor }}
         >
+          <span className="clientecho-quote-mark select-none">“</span>
           <BlurText
-            text={`"${item.content}"`}
+            text={item.content}
             delay={18}
             replayKey={`${item.id}-${replayKey || 0}`}
           />
+          <span className="clientecho-quote-mark select-none">”</span>
         </div>
       ) : (
         <p
-          className={`clientecho-quote mb-4 whitespace-pre-line leading-relaxed font-normal ${
-            isCompact ? "text-xs mb-2.5" : isLarge ? "text-base" : "text-sm"
+          className={`clientecho-quote mb-4 whitespace-pre-line leading-relaxed break-words ${
+            isCompact ? "mb-2.5" : "mb-4"
           }`}
-          style={{ color: currentTextColor }}
         >
-          "{item.content}"
+          <span className="clientecho-quote-mark select-none">“</span>
+          {item.content}
+          <span className="clientecho-quote-mark select-none">”</span>
         </p>
       )}
 
@@ -692,7 +993,7 @@ function CardContent({
             href={item.videoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="clientecho-video-btn block p-2.5 text-xs font-semibold text-center transition hover:opacity-90"
+            className="clientecho-video-btn block p-2.5 min-h-[44px] flex items-center justify-center text-xs font-semibold text-center transition hover:opacity-90 touch-manipulation"
             style={{ backgroundColor: primaryColor, color: "#FFFFFF" }}
           >
             ▶ Watch Video Testimonial
@@ -707,38 +1008,27 @@ function CardContent({
         }`}
         style={{ borderColor: currentBorder }}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           {item.authorAvatarUrl ? (
             <img
               src={item.authorAvatarUrl}
               alt={item.authorName}
-              className={`clientecho-avatar rounded-full object-cover ${
-                isCompact ? "w-6 h-6" : isLarge ? "w-9 h-9" : "w-8 h-8"
-              }`}
+              className="clientecho-avatar object-cover shrink-0"
             />
           ) : (
             <div
-              className={`clientecho-avatar rounded-full flex items-center justify-center font-bold text-xs ${
-                isCompact ? "w-6 h-6 text-[10px]" : isLarge ? "w-9 h-9 text-sm" : "w-8 h-8"
-              }`}
-              style={{ backgroundColor: primaryColor, color: "#FFFFFF" }}
+              className="clientecho-avatar flex items-center justify-center font-bold text-xs shrink-0"
             >
               {item.authorName.charAt(0).toUpperCase()}
             </div>
           )}
-          <div>
-            <div
-              className={`clientecho-author-name font-bold ${
-                isCompact ? "text-[11px]" : "text-xs"
-              }`}
-              style={{ color: currentTextColor }}
-            >
+          <div className="min-w-0">
+            <div className="clientecho-author-name truncate">
               {item.authorName}
             </div>
             {item.authorTitle && (
               <div
-                className="clientecho-author-title text-[10px] mt-0.5 opacity-80"
-                style={{ color: currentTextSecondary }}
+                className="clientecho-author-title mt-0.5 opacity-80 truncate max-w-[180px]"
               >
                 {item.authorTitle}
               </div>
@@ -746,19 +1036,14 @@ function CardContent({
           </div>
         </div>
 
-        {/* Standardized Clickable Trust Verification Badges */}
+        {/* Standardized Clickable Trust Verification Badges with non-blocking baseline CSS */}
         {item.isImportedSelfReported || item.source === "manual_import" ? (
           <a
             href={`/verify/${item.id}`}
             target="_blank"
             rel="noopener noreferrer"
             title="View public verification record"
-            className="clientecho-badge inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition cursor-pointer border hover:opacity-80 shrink-0"
-            style={{
-              backgroundColor: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)",
-              borderColor: currentBorder,
-              color: currentTextColor,
-            }}
+            className="clientecho-badge clientecho-badge-self inline-flex items-center px-2 py-1 rounded text-[10px] font-mono font-semibold transition cursor-pointer border hover:opacity-80 shrink-0 min-h-[28px] touch-manipulation"
           >
             [Self-Reported]
           </a>
@@ -768,10 +1053,9 @@ function CardContent({
             target="_blank"
             rel="noopener noreferrer"
             title="View public cryptographic verification record"
-            className="clientecho-badge inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold hover:opacity-90 hover:scale-105 transition transform cursor-pointer shadow-xs shrink-0"
-            style={{ backgroundColor: accentColor, color: "#FFFFFF" }}
+            className="clientecho-badge clientecho-badge-verified inline-flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-semibold hover:opacity-90 hover:scale-105 transition transform cursor-pointer shadow-xs shrink-0 min-h-[28px] touch-manipulation"
           >
-            <ShieldCheck className="w-3 h-3" />
+            <ShieldCheck className="w-3.5 h-3.5" />
             <span>Verified</span>
           </a>
         ) : (
@@ -780,12 +1064,7 @@ function CardContent({
             target="_blank"
             rel="noopener noreferrer"
             title="View public verification record"
-            className="clientecho-badge inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition cursor-pointer border hover:opacity-80 shrink-0"
-            style={{
-              borderColor: currentBorder,
-              color: currentTextColor,
-              backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "transparent",
-            }}
+            className="clientecho-badge clientecho-badge-direct inline-flex items-center px-2 py-1 rounded text-[10px] font-mono font-semibold transition cursor-pointer border hover:opacity-80 shrink-0 min-h-[28px] touch-manipulation"
           >
             Direct Verified
           </a>

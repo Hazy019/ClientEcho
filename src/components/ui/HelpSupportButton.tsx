@@ -24,7 +24,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: "What is included in the Pro plan vs Starter Free?",
-    answer: "Starter Free allows 1 active widget and 25 approved testimonials with ClientEcho branding. Pro unlocks unlimited widgets, custom Google Fonts, accent colors, carousel layouts, and removes footer branding.",
+    answer: "Starter Free allows 3 active widgets (perfect for testing and comparing layouts) and 25 approved testimonials with ClientEcho branding. Pro unlocks unlimited widgets, custom Google Fonts, accent colors, carousel layouts, and removes footer branding.",
   },
 ];
 

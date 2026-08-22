@@ -48,35 +48,43 @@ export async function POST(req: Request) {
     const cleanContent = sanitizeHtml(data.content);
     const cleanPrompt = data.promptMessage ? sanitizePlainText(data.promptMessage) : undefined;
 
-    // Insert pending draft testimonial
-    const [newTestimonial] = await db
-      .insert(testimonials)
-      .values({
-        widgetId: widget.id,
-        creatorId: user.id,
-        authorName: cleanAuthorName,
-        authorEmail: data.clientEmail,
-        content: cleanContent,
-        rating: data.rating,
-        status: "pending",
-        source: "magic_link",
-      })
-      .returning();
-
     // Generate cryptographically random 32-byte token and store hash
     const { rawToken, tokenHash, expiresAt } = generateMagicLinkToken(72);
 
-    await db.insert(magicLinkTokens).values({
-      testimonialId: newTestimonial.id,
-      tokenHash,
-      clientEmail: data.clientEmail,
-      expiresAt,
+    // Atomically insert draft testimonial and single-use magic link token
+    const newTestimonial = await db.transaction(async (tx) => {
+      const [t] = await tx
+        .insert(testimonials)
+        .values({
+          widgetId: widget.id,
+          creatorId: user.id,
+          authorName: cleanAuthorName,
+          authorEmail: data.clientEmail,
+          content: cleanContent,
+          rating: data.rating,
+          status: "pending",
+          source: "magic_link",
+          metadata: {
+            promptMessage: cleanPrompt,
+          },
+        })
+        .returning();
+
+      await tx.insert(magicLinkTokens).values({
+        testimonialId: t.id,
+        tokenHash,
+        clientEmail: data.clientEmail,
+        expiresAt,
+      });
+
+      return t;
     });
 
     // Send email with raw token link
     const emailResult = await sendMagicLinkApprovalEmail({
       toEmail: data.clientEmail,
       creatorName: user.user_metadata?.name || user.email || "Freelancer",
+      creatorEmail: user.email || undefined,
       rawToken,
       promptMessage: cleanPrompt,
     });

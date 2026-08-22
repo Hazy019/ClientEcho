@@ -150,17 +150,17 @@ export default function BillingPage() {
                   Active Widget Limit
                 </span>
                 <span className="text-xs font-mono font-bold text-ink-900">
-                  {widgetCount} of 1 Cap
+                  {widgetCount} of 3 Cap
                 </span>
               </div>
               <div className="w-full bg-surface-light h-3 rounded-full overflow-hidden border border-ink-900/10">
                 <div
                   className="bg-ink-900 h-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, (widgetCount / 1) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (widgetCount / 3) * 100)}%` }}
                 />
               </div>
               <p className="text-xs text-ink-800/70 leading-relaxed">
-                Standard workspaces can configure and embed 1 live active testimonial widget at a time.
+                Standard workspaces can configure and embed up to 3 live active testimonial widgets to test and explore different designs.
               </p>
             </div>
 

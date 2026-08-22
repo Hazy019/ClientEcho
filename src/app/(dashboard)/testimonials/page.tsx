@@ -1,15 +1,79 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Send, Upload, Star, Check, X, Trash2, Loader2, Filter, Edit2, ShieldCheck, Crown, Clock } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Send,
+  Upload,
+  Star,
+  Check,
+  X,
+  Trash2,
+  Loader2,
+  Filter,
+  Edit2,
+  ShieldCheck,
+  Crown,
+  Clock,
+  Sparkles,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Copy,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useToast } from "@/components/ui/Toast";
+import { useModal } from "@/components/ui/ConfirmModal";
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import CustomSelect from "@/components/ui/CustomSelect";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 
 export const dynamic = "force-dynamic";
+
+// 1-Click Starter Suggestions for Draft Testimonial Content
+const DRAFT_STARTERS = [
+  {
+    id: "speed",
+    label: "Speed & Reliability",
+    icon: "⚡",
+    text: "Working together was smooth and effortless. The communication was crystal clear throughout and the deliverables were completed ahead of schedule with zero friction.",
+  },
+  {
+    id: "quality",
+    label: "Design & Craft",
+    icon: "🎨",
+    text: "Transformed our rough concepts into a polished, high-performing design. The attention to detail, visual craftsmanship, and responsiveness were exceptional.",
+  },
+  {
+    id: "impact",
+    label: "Results & ROI",
+    icon: "📈",
+    text: "The work provided saved us weeks of trial and error and had an immediate positive impact on our project launch. Highly recommend their expertise!",
+  },
+];
+
+// Warm, respectful invitation note templates for email & review page
+const NOTE_TEMPLATES = [
+  {
+    id: "save_time",
+    label: "Save Time (Respectful)",
+    getText: (name: string) =>
+      `Hi ${name.trim() || "[Client Name]"}, I'm updating my web portfolio and would love to feature our recent project. I know you are incredibly busy, so to save you time, I drafted a quick blurb based on the feedback you gave me during the launch. Please feel free to edit this, rewrite it completely, or just approve it if it looks good!`,
+  },
+  {
+    id: "launch",
+    label: "Project Launch",
+    getText: (name: string) =>
+      `Hi ${name.trim() || "[Client Name]"}, thank you for the wonderful collaboration on our recent launch! To showcase our work on my portfolio, I put together a quick draft review. Feel free to tweak any words or confirm with 1 click if you're happy with it!`,
+  },
+  {
+    id: "direct",
+    label: "Short & Direct",
+    getText: (name: string) =>
+      `Hi ${name.trim() || "[Client Name]"}, I drafted a short testimonial quote based on our project together. Please take a look, make any adjustments you like, or confirm approval!`,
+  },
+];
 
 interface TestimonialItem {
   id: string;
@@ -27,6 +91,7 @@ interface TestimonialItem {
 
 export default function TestimonialsModerationPage() {
   const { showToast } = useToast();
+  const { confirm } = useModal();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [items, setItems] = useState<TestimonialItem[]>([]);
@@ -49,7 +114,19 @@ export default function TestimonialsModerationPage() {
   const [magicEmail, setMagicEmail] = useState("");
   const [magicName, setMagicName] = useState("");
   const [magicContent, setMagicContent] = useState("");
-  const [magicPrompt, setMagicPrompt] = useState("");
+  const [selectedNoteTemplate, setSelectedNoteTemplate] = useState<string>("save_time");
+  const [customNote, setCustomNote] = useState("");
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [activeDraftStarter, setActiveDraftStarter] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const effectivePrompt = useMemo(() => {
+    if (isEditingNote && customNote.trim()) {
+      return customNote;
+    }
+    const tpl = NOTE_TEMPLATES.find((t) => t.id === selectedNoteTemplate) || NOTE_TEMPLATES[0];
+    return tpl.getText(magicName);
+  }, [isEditingNote, customNote, selectedNoteTemplate, magicName]);
 
   // Manual import form state
   const [importWidgetId, setImportWidgetId] = useState("");
@@ -107,22 +184,32 @@ export default function TestimonialsModerationPage() {
           clientEmail: magicEmail,
           authorName: magicName,
           content: magicContent,
-          promptMessage: magicPrompt,
+          promptMessage: effectivePrompt,
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
         if (data.devApprovalUrl) {
-          console.log("[DEV APPROVAL LINK]:", data.devApprovalUrl);
-          showToast(`Magic link created! Dev URL: ${data.devApprovalUrl}`, "success");
+          try {
+            await navigator.clipboard.writeText(data.devApprovalUrl);
+          } catch (_) {}
+        }
+        if (data.emailSent) {
+          showToast(`Magic link invitation emailed to ${magicEmail}!`, "success");
         } else {
-          showToast("Magic link request sent to client!", "success");
+          showToast(
+            `Magic link created & copied to clipboard! (Email note: ${data.emailError || "Dev sandbox mode"})`,
+            "info"
+          );
         }
         setShowMagicModal(false);
         setMagicEmail("");
         setMagicName("");
         setMagicContent("");
+        setCustomNote("");
+        setIsEditingNote(false);
+        setActiveDraftStarter(null);
         fetchInitialData();
       } else {
         showToast(data.error || "Failed to send magic link.", "error");
@@ -131,6 +218,39 @@ export default function TestimonialsModerationPage() {
       showToast("Network error while sending magic link.", "error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleResendMagicLink = async (testimonialId: string) => {
+    setResendingId(testimonialId);
+    try {
+      const res = await fetch("/api/testimonials/resend-magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testimonialId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.approvalUrl) {
+          try {
+            await navigator.clipboard.writeText(data.approvalUrl);
+          } catch (_) {}
+        }
+        if (data.emailSent) {
+          showToast("Approval invitation re-sent to client's email!", "success");
+        } else {
+          showToast(
+            `Magic link copied to clipboard! (Email note: ${data.emailError || "Sandbox mode"})`,
+            "info"
+          );
+        }
+      } else {
+        showToast(data.error || "Failed to resend magic link.", "error");
+      }
+    } catch {
+      showToast("Network error while resending link.", "error");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -219,49 +339,110 @@ export default function TestimonialsModerationPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this testimonial?")) return;
+    // Step 1: Show beautiful glassmorphic confirm overlay
+    const confirmed = await confirm({
+      title: "Delete this testimonial?",
+      description:
+        "This testimonial will be permanently removed from your queue. You\'ll have 5 seconds to undo after confirming.",
+      confirmLabel: "Delete",
+      cancelLabel: "Keep it",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
-    try {
-      const res = await fetch(`/api/testimonials?id=${id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setItems(items.filter((item) => item.id !== id));
-        showToast("Testimonial deleted from queue.", "info");
-      } else {
-        showToast("Failed to delete testimonial.", "error");
+    // Step 2: Optimistically remove from UI immediately
+    const deletedItem = items.find((i) => i.id === id);
+    setItems((prev) => prev.filter((item) => item.id !== id));
+
+    // Step 3: 5-second undo window via a separate undo toast
+    let undone = false;
+    const undoToastId = `undo-delete-${id}`;
+
+    // We trigger undo logic via a custom event so the UndoToast
+    // can call back into our component
+    const commitDelete = async () => {
+      if (undone) return;
+      try {
+        const res = await fetch(`/api/testimonials?id=${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          showToast("Failed to delete. Restoring testimonial.", "error");
+          if (deletedItem) setItems((prev) => [deletedItem, ...prev]);
+        }
+      } catch {
+        showToast("Network error. Restoring testimonial.", "error");
+        if (deletedItem) setItems((prev) => [deletedItem, ...prev]);
       }
-    } catch {
-      showToast("Network error.", "error");
-    }
+    };
+
+    // Dispatch a custom event that ModalProvider's undo system will pick up
+    const event = new CustomEvent("ce:undo-action", {
+      detail: {
+        id: undoToastId,
+        message: "Testimonial deleted",
+        onUndo: () => {
+          undone = true;
+          if (deletedItem) setItems((prev) => [deletedItem, ...prev]);
+          showToast("Deletion undone! Testimonial restored.", "success");
+        },
+        onCommit: commitDelete,
+      },
+    });
+    window.dispatchEvent(event);
   };
 
   const renderSourceBadge = (item: TestimonialItem) => {
     if (item.source === "magic_link") {
+      if (item.status === "approved") {
+        return (
+          <a
+            href={`/verify/${item.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open Public Verification Page"
+            className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-600 text-surface-white hover:bg-emerald-700 transition cursor-pointer shadow-2xs"
+          >
+            <ShieldCheck className="w-3 h-3" />
+            <span>Verified & Approved</span>
+          </a>
+        );
+      }
+      if (item.status === "pending") {
+        return (
+          <span
+            title="Awaiting client approval via email magic link"
+            className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-900"
+          >
+            <Clock className="w-3 h-3 text-amber-600" />
+            <span>Awaiting Client Approval</span>
+          </span>
+        );
+      }
       return (
-        <a
-          href={`/verify/${item.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open Public Verification Page"
-          className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-ink-900 text-surface-white hover:bg-ink-800 transition cursor-pointer"
-        >
-          <ShieldCheck className="w-3 h-3" />
-          <span>Verified & Approved</span>
-        </a>
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-800">
+          <X className="w-3 h-3 text-rose-600" />
+          <span>Magic Link Rejected</span>
+        </span>
       );
     }
     if (item.source === "public_form") {
+      if (item.status === "approved") {
+        return (
+          <a
+            href={`/verify/${item.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open Public Verification Page"
+            className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-ink-800 text-ink-900 hover:bg-surface-light transition cursor-pointer"
+          >
+            <ShieldCheck className="w-3 h-3 text-indigo-600" />
+            <span>Verified Direct Submission</span>
+          </a>
+        );
+      }
       return (
-        <a
-          href={`/verify/${item.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open Public Verification Page"
-          className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-ink-800 text-ink-900 hover:bg-surface-light transition cursor-pointer"
-        >
-          <span>Verified Direct Submission</span>
-        </a>
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-900">
+          <span>Direct Form Submission</span>
+        </span>
       );
     }
     return (
@@ -472,58 +653,115 @@ export default function TestimonialsModerationPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {editingId !== item.id && (
+                {/* Action Controls */}
+                {item.source === "magic_link" && item.status === "pending" ? (
+                  <div className="flex items-center gap-2">
+                    {/* Copy Link & Resend */}
                     <button
-                      onClick={() => {
-                        setEditingId(item.id);
-                        setEditContent(item.content);
-                        setEditAuthorName(item.authorName);
-                      }}
-                      className="inline-flex items-center gap-1 text-ink-800/70 hover:text-ink-900 transition"
+                      type="button"
+                      onClick={() => handleResendMagicLink(item.id)}
+                      disabled={resendingId === item.id}
+                      title="Copy approval link to clipboard & re-send email invitation"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-semibold rounded-lg shadow-sm text-xs transition active:scale-[0.97] disabled:opacity-60"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
+                      {resendingId === item.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      <span>Copy Link & Resend</span>
                     </button>
-                  )}
 
-                  {item.status !== "approved" && (
+                    {editingId !== item.id && (
+                      <button
+                        onClick={() => {
+                          setEditingId(item.id);
+                          setEditContent(item.content);
+                          setEditAuthorName(item.authorName);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-ink-800/70 hover:text-ink-900 transition px-2 py-1 hover:bg-surface-light rounded-lg"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Edit Draft</span>
+                      </button>
+                    )}
+
+                    {/* Manual publish fallback */}
                     <button
+                      type="button"
                       onClick={() => handleStatusChange(item.id, "approved")}
                       disabled={actionLoadingId === item.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-semibold rounded-lg shadow-sm transition active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                      title="Publish immediately without waiting for client email confirmation (converts to creator self-reported)"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono text-ink-800/80 hover:text-ink-900 border border-ink-900/15 hover:bg-surface-light rounded-lg transition"
                     >
-                      {actionLoadingId === item.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      <span>Approve</span>
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span>Publish Manually</span>
                     </button>
-                  )}
 
-                  {item.status !== "rejected" && (
+                    {/* Cancel magic link request */}
                     <button
-                      onClick={() => handleStatusChange(item.id, "rejected")}
-                      disabled={actionLoadingId === item.id}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-light hover:bg-ink-900/10 text-ink-900 border border-ink-900/20 font-medium rounded-lg transition active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                      onClick={() => handleDelete(item.id)}
+                      title="Cancel magic link request"
+                      className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 px-2 py-1 hover:bg-rose-50 rounded-lg transition"
                     >
-                      {actionLoadingId === item.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <X className="w-3.5 h-3.5" />
-                      )}
-                      <span>Reject</span>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Cancel</span>
                     </button>
-                  )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    {editingId !== item.id && (
+                      <button
+                        onClick={() => {
+                          setEditingId(item.id);
+                          setEditContent(item.content);
+                          setEditAuthorName(item.authorName);
+                        }}
+                        className="inline-flex items-center gap-1 text-ink-800/70 hover:text-ink-900 transition"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-1.5 text-ink-800/40 hover:text-ink-900 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                    {item.status !== "approved" && (
+                      <button
+                        onClick={() => handleStatusChange(item.id, "approved")}
+                        disabled={actionLoadingId === item.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-800 text-surface-white font-semibold rounded-lg shadow-sm transition active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                      >
+                        {actionLoadingId === item.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        <span>Approve</span>
+                      </button>
+                    )}
+
+                    {item.status !== "rejected" && (
+                      <button
+                        onClick={() => handleStatusChange(item.id, "rejected")}
+                        disabled={actionLoadingId === item.id}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-light hover:bg-ink-900/10 text-ink-900 border border-ink-900/20 font-medium rounded-lg transition active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                      >
+                        {actionLoadingId === item.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <X className="w-3.5 h-3.5" />
+                        )}
+                        <span>Reject</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-1.5 text-ink-800/40 hover:text-ink-900 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
@@ -608,16 +846,112 @@ export default function TestimonialsModerationPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 mb-1">
-                    Draft Testimonial Content
-                  </label>
+                {/* Warm Email Note to Client (Framing Message) */}
+                <div className="p-3.5 bg-surface-light/70 rounded-2xl border border-ink-900/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-ink-900 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-ink-900" />
+                      <span>Email Note to Client</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isEditingNote) {
+                          setCustomNote(effectivePrompt);
+                        }
+                        setIsEditingNote(!isEditingNote);
+                      }}
+                      className="text-[11px] font-mono text-ink-800/80 hover:text-ink-900 underline cursor-pointer"
+                    >
+                      {isEditingNote ? "Reset to Template" : "Customize Note"}
+                    </button>
+                  </div>
+
+                  {/* Template Selector Pills */}
+                  {!isEditingNote && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {NOTE_TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => setSelectedNoteTemplate(tpl.id)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition cursor-pointer border ${
+                            selectedNoteTemplate === tpl.id
+                              ? "bg-ink-900 text-surface-white border-ink-900 font-semibold shadow-xs"
+                              : "bg-surface-white border-ink-900/10 text-ink-800/80 hover:bg-surface-light"
+                          }`}
+                        >
+                          {tpl.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Note Preview or Custom Input */}
+                  {isEditingNote ? (
+                    <textarea
+                      rows={3}
+                      value={customNote}
+                      onChange={(e) => setCustomNote(e.target.value)}
+                      placeholder="Type your custom email message to client..."
+                      className="w-full px-3 py-2 border border-ink-900/20 rounded-xl text-xs font-mono bg-surface-white focus:outline-none focus:border-ink-900 leading-relaxed"
+                    />
+                  ) : (
+                    <div className="p-2.5 bg-surface-white rounded-xl border border-ink-900/10 text-xs text-ink-800/80 italic leading-relaxed">
+                      "{effectivePrompt}"
+                    </div>
+                  )}
+                </div>
+
+                {/* Draft Testimonial Content with 1-Click Starter Suggestions */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <label className="text-xs font-mono font-semibold uppercase tracking-wider text-ink-800/70 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-ink-900" />
+                      <span>Draft Testimonial Content</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-ink-800/50">
+                      Client can approve or edit
+                    </span>
+                  </div>
+
+                  {/* 1-Click Starter Draft Suggestions */}
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-mono text-ink-800/60 uppercase tracking-wider">
+                      1-Click Starter Suggestions:
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                      {DRAFT_STARTERS.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setMagicContent(s.text);
+                            setActiveDraftStarter(s.id);
+                            showToast(`Applied "${s.label}" draft`, "info");
+                          }}
+                          className={`px-2 py-1.5 rounded-xl text-[11px] font-medium border text-left transition cursor-pointer flex items-center gap-1.5 ${
+                            activeDraftStarter === s.id && magicContent === s.text
+                              ? "bg-ink-900 text-surface-white border-ink-900 shadow-xs font-semibold"
+                              : "bg-surface-light border-ink-900/10 text-ink-900 hover:bg-ink-900/5"
+                          }`}
+                        >
+                          <span>{s.icon}</span>
+                          <span className="truncate">{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <textarea
                     rows={3}
                     value={magicContent}
-                    onChange={(e) => setMagicContent(e.target.value)}
+                    onChange={(e) => {
+                      setMagicContent(e.target.value);
+                      setActiveDraftStarter(null);
+                    }}
                     placeholder="Draft testimonial text for client review..."
-                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900"
+                    className="w-full px-3.5 py-2.5 border border-ink-900/20 rounded-xl text-sm focus:outline-none focus:border-ink-900 bg-surface-white leading-relaxed"
                     required
                   />
                 </div>

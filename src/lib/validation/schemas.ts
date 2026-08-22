@@ -6,7 +6,7 @@ export const magicLinkRequestSchema = z.object({
   authorName: z.string().min(1, "Author name is required").max(100),
   content: z.string().min(1, "Content is required").max(2000),
   rating: z.number().int().min(1).max(5).optional(),
-  promptMessage: z.string().max(500).optional(),
+  promptMessage: z.string().max(1000).optional(),
 });
 
 export const magicLinkApproveSchema = z.object({
@@ -50,9 +50,9 @@ export const widgetSchema = z.object({
       accentColor: z.string().optional(),
       backgroundColor: z.string().optional(),
       textColor: z.string().optional(),
-      cardStyle: z.enum(["minimal", "border", "glass"]).default("border"),
-      layout: z.enum(["grid", "carousel", "list", "rotator", "marquee", "spotlight"]).optional(),
-      layoutVariant: z.enum(["grid", "carousel", "rotator", "marquee", "spotlight"]).default("grid"),
+      cardStyle: z.enum(["minimal", "border", "glass", "transparent", "outline"]).default("border"),
+      layout: z.enum(["grid", "carousel", "list", "rotator", "marquee", "spotlight", "stacked_deck", "orbit_avatars"]).optional(),
+      layoutVariant: z.enum(["grid", "carousel", "rotator", "marquee", "spotlight", "stacked_deck", "orbit_avatars"]).default("grid"),
       fontPairing: z.string().optional(),
       showRating: z.boolean().default(true),
       showAvatar: z.boolean().default(true),
@@ -64,6 +64,7 @@ export const widgetSchema = z.object({
       textReveal: z.boolean().default(false),
       defaultTheme: z.enum(["light", "dark", "auto"]).default("light"),
       autoRotateInterval: z.number().min(2).max(60).default(6),
+      marqueeSpeed: z.number().min(8).max(120).default(35),
       customCss: z.string().optional(),
     })
     .passthrough()

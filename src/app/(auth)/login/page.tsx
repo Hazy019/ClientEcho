@@ -26,14 +26,16 @@ function LoginContent() {
     setErrorMessage("");
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        setErrorMessage(error.message);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMessage(data.error || "An unexpected error occurred during sign in.");
         setLoading(false);
         return;
       }
@@ -42,12 +44,26 @@ function LoginContent() {
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
-      if (err?.message?.includes("Failed to fetch") || !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")) {
-        setErrorMessage("Supabase is not configured in .env. Please set NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY to your Supabase project credentials.");
-      } else {
-        setErrorMessage(err?.message || "An unexpected error occurred during sign in.");
+      // Fallback in case fetch network error occurs
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          setErrorMessage(error.message);
+          setLoading(false);
+          return;
+        }
+
+        router.push(redirectTo);
+        router.refresh();
+      } catch (fallbackErr: any) {
+        setErrorMessage("Unable to connect to authentication service. Please check your network connection.");
+        setLoading(false);
       }
-      setLoading(false);
     }
   };
 

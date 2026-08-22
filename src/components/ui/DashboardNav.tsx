@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckSquare, Sparkles, SlidersHorizontal, BarChart3, Settings, CreditCard, Menu, X } from "lucide-react";
+import { CheckSquare, LayoutGrid, SlidersHorizontal, BarChart3, Settings, CreditCard, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/testimonials", label: "Approval Queue", icon: CheckSquare },
-  { href: "/widgets",      label: "Widgets",         icon: Sparkles },
+  { href: "/widgets",      label: "Widgets",         icon: LayoutGrid },
   { href: "/channels",     label: "Channels",         icon: SlidersHorizontal },
   { href: "/dashboard",    label: "Analytics",        icon: BarChart3 },
   { href: "/settings",     label: "Settings",         icon: Settings },

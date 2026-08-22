@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useModal } from "@/components/ui/ConfirmModal";
 import { Crown, Check, X, ArrowRight, ShieldCheck, Zap, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,6 +23,7 @@ export default function UpgradeModal({
   featureName = "Pro Feature Access",
   description = "Unlock unlimited widgets, custom typography, accent colors, layout variants, and bulk approvals.",
 }: UpgradeModalProps) {
+  const { alert: showAlert } = useModal();
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -37,11 +39,11 @@ export default function UpgradeModal({
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.error || "Failed to initiate Checkout session.");
+        showAlert({ title: "Checkout Error", description: data.error || "Failed to initiate Checkout session. Please try again.", variant: "warning" });
         setLoading(false);
       }
     } catch (err) {
-      alert("Network error starting checkout.");
+      showAlert({ title: "Network Error", description: "A network error occurred while starting checkout. Please check your connection.", variant: "warning" });
       setLoading(false);
     }
   };
@@ -105,7 +107,7 @@ export default function UpgradeModal({
               <ul className="space-y-2 text-surface-white/60 text-[11px]">
                 <li className="flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 text-surface-white/40" />
-                  <span>1 Active Widget</span>
+                  <span>3 Active Widgets (Explore & Test Designs)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 text-surface-white/40" />

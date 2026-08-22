@@ -67,7 +67,7 @@ export default function BlurText({
   return (
     <motion.span
       key={replayKey}
-      className={`inline-block ${className}`}
+      className={`inline ${className}`}
       style={style}
       variants={containerVariants}
       initial="hidden"
