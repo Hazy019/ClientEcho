@@ -46,10 +46,16 @@
 @layer base {
   html {
     @apply scroll-smooth;
+    /* Lock html to the viewport — all scrolling is handled by .app-scroll-region */
+    overflow: hidden;
+    height: 100%;
   }
 
   body {
     @apply bg-surface-white text-ink-900 font-sans antialiased text-base leading-relaxed;
+    /* Prevent body from generating its own scrollbar */
+    overflow: hidden;
+    height: 100%;
   }
 
   /* ── Typography Scale (Syne Display + Manrope Body) ── */
@@ -119,15 +125,30 @@
 }
 
 /* ============================================================================
-   CUSTOM SCROLLBAR — Branded Floating Pill
-   Works on: Chrome, Edge, Brave (WebKit/Blink)
-   Strategy: transparent track + narrow pill thumb via border-clip trick
+   CUSTOM SCROLLBAR — ClientEcho Signature Rail
+   Design Language: Monochrome precision. Ink-on-glass. Editorial restraint.
+   ────────────────────────────────────────────────────────────────────────────
+   Architecture:
+     Track  : 8px wide, transparent — blends into any background
+     Thumb  : ink-900 pill with 2.5px inset border — appears as a 3px rail
+     States : default → hover → active progressively increase opacity
+     Easing : spring cubic-bezier(0.16, 1, 0.3, 1) — matches FadeInUp system
+   Rhyming tokens:
+     border-radius: 9999px — echoes navbar badge, CTA buttons, feature icons
+     ink-900 (#2D2D2D)    — same as heading text, logo, icon fills
    ============================================================================ */
 
-/* ── Base Scrollbar Styling ── */
+/* ── Global fallback (modals, overflow containers not using .app-scroll-region) ── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+}
+
+/* Kill the native ▲▼ arrow buttons on ALL scrollbars */
+::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
 }
 
 ::-webkit-scrollbar-track {
@@ -135,71 +156,117 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(45, 45, 45, 0.2);
+  background: rgba(45, 45, 45, 0.22);
   background-clip: padding-box;
+  /* Integer-only border — sub-pixel values are silently ignored by Chrome */
+  border: 2px solid transparent;
   border-radius: 9999px;
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(45, 45, 45, 0.4);
+  background: rgba(45, 45, 45, 0.5);
+  background-clip: padding-box;
 }
 
-/* ── Light Surface Scrollbar (Landing + Creator Dashboard) ── */
+/* ── Primary landing page scrollbar ── */
+/*
+   Dual-surface challenge: thumb must read clearly on
+     • Dark hero  : #33363B (ink-800)
+     • Light body  : #FFFFFF and #EFF3F6
+
+   Solution: Frosted glass track tint + high-contrast thumb
+     • Track gets a faint rgba(239,243,246,0.08) wash — barely there on light,
+       creates a subtle recessed groove on dark sections
+     • Thumb is solid ink-900 at 0.72 opacity — confident on both surfaces
+     • Inset: 2.5px — the pill appears 3px wide, narrow & editorial
+*/
 .app-scroll-region::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
+}
+
+/* Hide the native arrow buttons on the main scroll container too */
+.app-scroll-region::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
 }
 
 .app-scroll-region::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(239, 243, 246, 0.06);
   border-radius: 9999px;
+  /* margin is NOT supported on scrollbar track — removed */
 }
 
 .app-scroll-region::-webkit-scrollbar-thumb {
-  /* Reliable cross-browser approach: mid-opacity dark pill.
-     rgba(80,80,80,0.35) sits between dark and light —
-     visible on both #33363B hero and #EFF3F6 surface-light sections. */
-  background-color: rgba(80, 80, 80, 0.35);
+  background: rgba(45, 45, 45, 0.72);
   background-clip: padding-box;
-  border: 3px solid transparent;
+  /* Integer borders only — Chrome ignores sub-pixel scrollbar values */
+  border: 2px solid transparent;
   border-radius: 9999px;
-  min-height: 40px;
-  transition: background-color 0.25s ease;
+  min-height: 44px;
+  transition: background 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-scroll-region::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(60, 60, 60, 0.6);
+  background: rgba(45, 45, 45, 0.88);
+  background-clip: padding-box;
+  /* Tighten inset on hover — thumb widens as micro-feedback */
+  border: 1px solid transparent;
 }
 
 .app-scroll-region::-webkit-scrollbar-thumb:active {
-  background-color: rgba(40, 40, 40, 0.8);
-}
-
-/* Firefox */
-.app-scroll-region {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(45, 45, 45, 0.22) transparent;
-}
-
-/* ── Dark Surface Scrollbar (Admin Dashboard) ── */
-.app-scroll-region--dark::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.16);
+  background: rgba(45, 45, 45, 0.97);
   background-clip: padding-box;
-  border: 3px solid transparent;
+  border: 1px solid transparent;
+}
+
+/*
+   CRITICAL: Chrome 121+ treats scrollbar-width/scrollbar-color as taking full
+   precedence over ::-webkit-scrollbar pseudo-elements on the SAME element.
+   If both are present, Chrome IGNORES the webkit rules and renders a native scrollbar.
+   Fix: gate Firefox-only properties behind @supports (-moz-appearance:none).
+*/
+@supports (-moz-appearance: none) {
+  /* Firefox only — webkit pseudo-elements don't exist here */
+  .app-scroll-region {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(45, 45, 45, 0.65) transparent;
+  }
+}
+
+/* ── Admin dark-surface scrollbar ── */
+.app-scroll-region--dark::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+}
+
+.app-scroll-region--dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+  border: 2px solid transparent;
   border-radius: 9999px;
-  min-height: 40px;
-  transition: background-color 0.2s ease;
+  min-height: 44px;
+  transition: background 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-scroll-region--dark::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.52);
+  background-clip: padding-box;
+  border: 1px solid transparent;
 }
 
 .app-scroll-region--dark::-webkit-scrollbar-thumb:active {
-  background-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.78);
+  background-clip: padding-box;
+  border: 1px solid transparent;
 }
 
-.app-scroll-region--dark {
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+@supports (-moz-appearance: none) {
+  .app-scroll-region--dark {
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  }
 }
 
 /* ── Generic .custom-scrollbar class (modals, drawers, table overflow) ── */
