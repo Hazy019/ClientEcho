@@ -61,23 +61,25 @@ export function getBaseUrl(req?: Request): string {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
-export function getFromAddress(): string {
+export function getFromAddress(senderName?: string): string {
   const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+  const displayName = senderName ? `${senderName} via ClientEcho` : "ClientEcho";
   if (gmailUser) {
-    return `ClientEcho <${gmailUser.trim()}>`;
+    return `${displayName} <${gmailUser.trim()}>`;
   }
   const envFrom = process.env.EMAIL_FROM || process.env.RESEND_FROM_ADDRESS;
   if (envFrom && !envFrom.includes("@clientecho.com")) {
     return envFrom;
   }
   // Default to Resend testing domain if no Gmail SMTP is configured
-  return "ClientEcho <onboarding@resend.dev>";
+  return `${displayName} <onboarding@resend.dev>`;
 }
 
 /**
  * Universal email dispatcher: routes through Gmail SMTP if configured,
  * otherwise falls back to Resend API.
  * Uses strict timeouts to guarantee non-blocking execution.
+ * Configured with authentic 1-to-1 transactional headers for Primary Inbox delivery.
  */
 async function sendEmailMessage(options: {
   to: string;
@@ -85,16 +87,22 @@ async function sendEmailMessage(options: {
   html: string;
   text?: string;
   replyTo?: string;
+  from?: string;
   headers?: Record<string, string>;
 }): Promise<{ success: boolean; error?: string }> {
-  const fromAddress = getFromAddress();
+  const fromAddress = options.from || getFromAddress();
   const transporter = getSmtpTransporter();
 
-  const deliverabilityHeaders = {
-    "Auto-Submitted": "auto-generated",
-    "X-Auto-Response-Suppress": "All",
-    "List-Unsubscribe": `<mailto:${process.env.GMAIL_USER || "ClientEcho.web@gmail.com"}?subject=unsubscribe>`,
-    "X-Mailer": "ClientEcho Verification Engine",
+  // Generate unique RFC 5322 Message-ID to ensure distinct deliverability tracking
+  const userDomain = (process.env.GMAIL_USER || "mail.clientecho.com").split("@")[1] || "clientecho.com";
+  const uniqueMessageId = `<${Date.now()}.${Math.random().toString(36).substring(2, 11)}@${userDomain}>`;
+
+  // Authentic 1-to-1 transactional headers (No Auto-Submitted or List-Unsubscribe to avoid Promotions/Updates tabs)
+  const deliverabilityHeaders: Record<string, string> = {
+    "Message-ID": uniqueMessageId,
+    "X-Priority": "3",
+    "X-MSMail-Priority": "Normal",
+    "Importance": "Normal",
     ...options.headers,
   };
 
@@ -273,8 +281,11 @@ If you did not expect this invitation, you can safely ignore this email.
     </html>
   `;
 
+  const fromAddress = getFromAddress(params.creatorName);
+
   return sendEmailMessage({
     to: params.toEmail,
+    from: fromAddress,
     replyTo: replyTo || undefined,
     subject: `${params.creatorName || "Your service provider"} invited you to review a testimonial draft`,
     text: plainText,

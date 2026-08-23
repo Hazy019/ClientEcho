@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { publicFormSchema, magicLinkRequestSchema } from "../src/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "../src/lib/security/sanitizer";
 import { validateVideoUrl } from "../src/lib/security/video-url";
-import { generateMagicLinkToken, hashMagicLinkToken } from "../src/lib/tokens/magic-link";
+import { generateMagicLinkToken, hashMagicLinkToken, normalizeToken } from "../src/lib/tokens/magic-link";
+import { getFromAddress } from "../src/lib/email";
 
 describe("API Security & Validation Suite", () => {
   describe("1. Zod Input Validation", () => {
@@ -76,7 +77,7 @@ describe("API Security & Validation Suite", () => {
     });
   });
 
-  describe("4. Magic Link Cryptographic Token Security", () => {
+  describe("4. Magic Link Cryptographic Token Security & Robust Normalization", () => {
     it("generates 32-byte (64 hex char) random raw token and valid SHA-256 hash", () => {
       const tokenObj = generateMagicLinkToken(72);
       expect(tokenObj.rawToken).toHaveLength(64);
@@ -92,6 +93,31 @@ describe("API Security & Validation Suite", () => {
       const tokenObj = generateMagicLinkToken(72);
       const diffHours = (tokenObj.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
       expect(Math.round(diffHours)).toBe(72);
+    });
+
+    it("normalizes tokens with trailing whitespace, newlines, and quotes from mobile chat apps", () => {
+      const baseToken = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
+      
+      expect(normalizeToken(`  ${baseToken} \n`)).toBe(baseToken);
+      expect(normalizeToken(`"${baseToken}"`)).toBe(baseToken);
+      expect(normalizeToken(`<${baseToken}>`)).toBe(baseToken);
+      expect(normalizeToken(`${baseToken}.`)).toBe(baseToken);
+      expect(normalizeToken(encodeURIComponent(baseToken))).toBe(baseToken);
+
+      // Hashes must match exactly despite whitespace or surrounding artifacts
+      expect(hashMagicLinkToken(`  ${baseToken} \r\n`)).toBe(hashMagicLinkToken(baseToken));
+    });
+  });
+
+  describe("5. Email Deliverability & Sender Personalization", () => {
+    it("formats personalized sender display for 1-to-1 primary inbox delivery", () => {
+      const sender = getFromAddress("Hazy");
+      expect(sender).toContain("Hazy via ClientEcho");
+    });
+
+    it("falls back to ClientEcho when no creator name provided", () => {
+      const sender = getFromAddress();
+      expect(sender).toContain("ClientEcho");
     });
   });
 });

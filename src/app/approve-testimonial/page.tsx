@@ -77,7 +77,8 @@ function StarRating({
 
 function ApproveTestimonialContent() {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const rawTokenParam = searchParams.get("token") || "";
+  const token = rawTokenParam.trim();
 
   const [loading, setLoading] = useState(true);
   const [validState, setValidState] = useState<{
@@ -97,13 +98,14 @@ function ApproveTestimonialContent() {
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
 
-  useEffect(() => {
+  const verifyToken = () => {
     if (!token) {
       setLoading(false);
       setValidState({ valid: false, reason: "missing_token" });
       return;
     }
 
+    setLoading(true);
     fetch(`/api/testimonials/approve-token?token=${encodeURIComponent(token)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -115,8 +117,12 @@ function ApproveTestimonialContent() {
           setRating(data.testimonial.rating || 5);
         }
       })
-      .catch(() => setValidState({ valid: false, reason: "error" }))
+      .catch(() => setValidState({ valid: false, reason: "network_error" }))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    verifyToken();
   }, [token]);
 
   const handleSubmitApproval = async (e?: React.FormEvent) => {
@@ -154,20 +160,15 @@ function ApproveTestimonialContent() {
   };
 
   // ─── Shared page shell ───────────────────────────────────────────────────
-  // KEY: NO overflow-y-auto here. Let the document's native scroll handle
-  // vertical overflow. A min-h-screen div with overflow-y-auto never
-  // triggers scrolling because the div grows to match its content.
   const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div className="w-full min-h-screen bg-gradient-to-br from-[#f8f8f6] via-[#f4f4f2] to-[#ececea] flex flex-col items-center font-sans px-4 py-10 sm:py-16">
+    <div className="w-full min-h-screen max-h-screen bg-gradient-to-br from-[#f8f8f6] via-[#f4f4f2] to-[#ececea] flex flex-col items-center justify-center font-sans p-3 sm:p-6 overflow-y-auto custom-scrollbar">
       {children}
     </div>
   );
 
-  // KEY: NO overflow-hidden. That clips any content that grows below
-  // the initially-rendered card height.
   const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
     <div
-      className={`w-full max-w-lg bg-white rounded-[28px] shadow-[0_8px_40px_rgba(0,0,0,0.10)] border border-black/[0.05] ${className}`}
+      className={`w-full max-w-lg bg-white rounded-[28px] shadow-[0_12px_50px_rgba(0,0,0,0.12)] border border-black/[0.06] flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-fade-in-up ${className}`}
     >
       {children}
     </div>
@@ -197,7 +198,7 @@ function ApproveTestimonialContent() {
   if (!validState.valid && validState.reason === "already_approved") {
     return (
       <Shell>
-        <Card className="p-10 text-center space-y-5">
+        <Card className="p-8 sm:p-10 text-center space-y-5">
           <div className="w-14 h-14 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
             <CheckCircle className="w-7 h-7 text-white" />
           </div>
@@ -217,7 +218,7 @@ function ApproveTestimonialContent() {
   if (!validState.valid && validState.reason === "expired") {
     return (
       <Shell>
-        <Card className="p-10 text-center space-y-5">
+        <Card className="p-8 sm:p-10 text-center space-y-5">
           <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto border border-amber-200">
             <Clock className="w-7 h-7 text-amber-500" />
           </div>
@@ -233,21 +234,42 @@ function ApproveTestimonialContent() {
     );
   }
 
-  // ─── Invalid ─────────────────────────────────────────────────────────────
+  // ─── Invalid / Error ─────────────────────────────────────────────────────
   if (!validState.valid) {
+    const isNetworkError = validState.reason === "network_error" || validState.reason === "error";
+
     return (
       <Shell>
-        <Card className="p-10 text-center space-y-5">
+        <Card className="p-8 sm:p-10 text-center space-y-5">
           <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center mx-auto border border-rose-200">
             <AlertCircle className="w-7 h-7 text-rose-500" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900">Invalid Link</h1>
+          <h1 className="font-display text-2xl font-bold text-neutral-900">
+            {isNetworkError ? "Connection Error" : "Invalid Link"}
+          </h1>
           <p className="text-neutral-500 text-sm leading-relaxed">
-            We couldn't verify this magic link. Please check the URL from your invitation email or request a new invite.
+            {isNetworkError
+              ? "We couldn't connect to verify this magic link. Please check your internet connection and try again."
+              : "We couldn't verify this magic link. Please check the URL from your latest invitation email or request a new invite from your creator."}
           </p>
-          <Link href="/" className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200">
-            Return to ClientEcho
-          </Link>
+
+          <div className="space-y-2 pt-2">
+            {isNetworkError && (
+              <button
+                type="button"
+                onClick={verifyToken}
+                className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm rounded-2xl transition shadow-sm cursor-pointer"
+              >
+                Try Again
+              </button>
+            )}
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200"
+            >
+              Return to ClientEcho
+            </Link>
+          </div>
         </Card>
       </Shell>
     );
@@ -257,7 +279,7 @@ function ApproveTestimonialContent() {
   if (success) {
     return (
       <Shell>
-        <Card className="p-10 text-center space-y-5">
+        <Card className="p-8 sm:p-10 text-center space-y-5">
           <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-md">
             <CheckCircle className="w-9 h-9 text-white" />
           </div>
@@ -281,49 +303,51 @@ function ApproveTestimonialContent() {
   return (
     <Shell>
       <Card>
-        {/* ── Header ── */}
-        <div className="px-6 pt-8 pb-6 text-center border-b border-black/[0.06] space-y-3">
-          {/* Logo — white background so it's visible on any logo color */}
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-[0_2px_12px_rgba(0,0,0,0.12)] border border-black/[0.07] mb-3">
+        {/* ── Fixed Card Header ── */}
+        <div className="flex-shrink-0 px-6 pt-6 pb-4 text-center border-b border-black/[0.06] space-y-2.5 bg-white z-10">
+          {/* Logo — centered */}
+          <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-[0_2px_12px_rgba(0,0,0,0.10)] border border-black/[0.07] mb-2">
             <Image
               src="/ClientEcho_logo.png"
               alt="ClientEcho"
-              width={32}
-              height={32}
-              className="w-8 h-8 object-contain"
+              width={28}
+              height={28}
+              className="w-7 h-7 object-contain"
             />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200/80 text-[10px] font-mono uppercase tracking-wider text-neutral-600 font-bold">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-neutral-100 border border-neutral-200/80 text-[10px] font-mono uppercase tracking-wider text-neutral-600 font-bold">
             <Lock className="w-2.5 h-2.5" />
             Secure 1-Click Verification
           </div>
 
-          <h1 className="font-display text-2xl sm:text-[28px] font-bold text-neutral-900 tracking-tight leading-tight">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight leading-tight">
             Confirm Your Testimonial
           </h1>
-          <p className="text-neutral-500 text-sm leading-relaxed max-w-sm mx-auto">
+          <p className="text-neutral-500 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
             Review the draft below. Adjust the rating, tweak the wording, or approve it instantly with 1 click.
           </p>
         </div>
 
-        <div className="px-6 py-6 space-y-5">
-          {/* ── Personal Note from Creator ── */}
-          {validState.testimonial?.promptMessage && (
-            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80 space-y-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-500">
-                <Sparkles className="w-3.5 h-3.5" />
-                Personal Note from Creator
+        {/* ── Form container wrapping scrollable body and sticky footer ── */}
+        <form onSubmit={handleSubmitApproval} className="flex-1 flex flex-col min-h-0">
+          {/* ── Scrollable Body with Scoped Custom Scrollbar ── */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 custom-scrollbar">
+            {/* ── Personal Note from Creator ── */}
+            {validState.testimonial?.promptMessage && (
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80 space-y-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-500">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Personal Note from Creator
+                </div>
+                <p className="text-sm text-neutral-700 leading-relaxed italic">
+                  "{validState.testimonial.promptMessage}"
+                </p>
               </div>
-              <p className="text-sm text-neutral-700 leading-relaxed italic">
-                "{validState.testimonial.promptMessage}"
-              </p>
-            </div>
-          )}
+            )}
 
-          <form onSubmit={handleSubmitApproval} className="space-y-5">
             {/* ── Star Rating ── */}
-            <div className="text-center space-y-3 bg-neutral-50 rounded-2xl border border-neutral-200/80 px-5 py-4">
+            <div className="text-center space-y-2.5 bg-neutral-50 rounded-2xl border border-neutral-200/80 px-5 py-4">
               <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400">
                 Your Rating — Click a Star to Change
               </div>
@@ -397,13 +421,13 @@ function ApproveTestimonialContent() {
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       placeholder="Write or adjust your testimonial quote..."
-                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-900 bg-white transition leading-relaxed"
+                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-900 bg-white transition leading-relaxed custom-scrollbar"
                       required
                     />
                   </div>
                 </div>
               ) : (
-                <div className="bg-neutral-50 rounded-2xl border border-neutral-200/80 p-6 text-center space-y-3">
+                <div className="bg-neutral-50 rounded-2xl border border-neutral-200/80 p-5 sm:p-6 text-center space-y-3">
                   <p className="text-sm sm:text-base text-neutral-800 italic leading-relaxed">
                     "{content}"
                   </p>
@@ -424,34 +448,34 @@ function ApproveTestimonialContent() {
                 <span>{submitError}</span>
               </div>
             )}
+          </div>
 
-            {/* ── CTA ── */}
-            <div className="space-y-3 pt-1">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-4 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-2xl text-sm sm:text-[15px] shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Publishing Testimonial...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    {isEditing ? "Confirm & Publish My Edits" : "Approve & Publish Testimonial"}
-                  </>
-                )}
-              </button>
+          {/* ── Grounded Card Footer with Primary CTA ── */}
+          <div className="flex-shrink-0 px-6 py-4 border-t border-black/[0.06] bg-white space-y-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-10">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-3.5 sm:py-4 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-2xl text-sm sm:text-[15px] shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Publishing Testimonial...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>{isEditing ? "Confirm & Publish My Edits" : "Approve & Publish Testimonial"}</span>
+                </>
+              )}
+            </button>
 
-              <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-neutral-400 pb-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-neutral-500" />
-                No password required · Powered by ClientEcho
-              </div>
+            <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-neutral-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-neutral-500" />
+              <span>No password required · Powered by ClientEcho</span>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </Card>
     </Shell>
   );

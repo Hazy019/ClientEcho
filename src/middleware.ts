@@ -26,10 +26,17 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // IMPORTANT: Do not run code between createServerClient and getUser()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Safe authentication check with error shielding for stale refresh tokens
+  let user = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user) {
+      user = data.user;
+    }
+  } catch {
+    // If refresh token is expired or not found, treat request as unauthenticated
+    user = null;
+  }
 
   const pathname = request.nextUrl.pathname;
   const role = user?.app_metadata?.role;

@@ -59,19 +59,12 @@ export async function POST(req: Request) {
     // Generate fresh 32-byte token and expiry
     const { rawToken, tokenHash, expiresAt } = generateMagicLinkToken(72);
 
-    // Update or insert magic link token for this testimonial
-    await db.transaction(async (tx) => {
-      // Invalidate previous tokens
-      await tx
-        .delete(magicLinkTokens)
-        .where(eq(magicLinkTokens.testimonialId, testimonial.id));
-
-      await tx.insert(magicLinkTokens).values({
-        testimonialId: testimonial.id,
-        tokenHash,
-        clientEmail,
-        expiresAt,
-      });
+    // Insert fresh magic link token for this testimonial
+    await db.insert(magicLinkTokens).values({
+      testimonialId: testimonial.id,
+      tokenHash,
+      clientEmail,
+      expiresAt,
     });
 
     const meta = (testimonial.metadata || {}) as Record<string, any>;

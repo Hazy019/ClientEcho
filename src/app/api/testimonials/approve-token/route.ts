@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { db } from "@/db";
 import { magicLinkTokens, testimonials, widgets } from "@/db/schema";
-import { hashMagicLinkToken } from "@/lib/tokens/magic-link";
+import { hashMagicLinkToken, normalizeToken } from "@/lib/tokens/magic-link";
 import { magicLinkApproveSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "@/lib/security/sanitizer";
 import { invalidateWidgetCache } from "@/lib/cache/redis";
@@ -14,7 +14,7 @@ import { eq } from "drizzle-orm";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const rawToken = searchParams.get("token");
+    const rawToken = normalizeToken(searchParams.get("token"));
 
     if (!rawToken || rawToken.length < 32) {
       return NextResponse.json({ valid: false, reason: "invalid" }, { status: 400 });
@@ -49,19 +49,27 @@ export async function GET(req: Request) {
       return NextResponse.json({ valid: false, reason: "testimonial_not_found" }, { status: 404 });
     }
 
-    // Record openedAt timestamp in testimonial metadata if first time viewing
+    if (testimonial.status === "approved") {
+      return NextResponse.json({ valid: false, reason: "already_approved" });
+    }
+
+    // Non-blocking telemetry: Record openedAt timestamp in testimonial metadata if first time viewing
     const meta = ((testimonial.metadata as Record<string, any>) || {});
     if (!meta.openedAt) {
-      const nowIso = new Date().toISOString();
-      await db
-        .update(testimonials)
-        .set({
-          metadata: {
-            ...meta,
-            openedAt: nowIso,
-          },
-        })
-        .where(eq(testimonials.id, testimonial.id));
+      try {
+        const nowIso = new Date().toISOString();
+        await db
+          .update(testimonials)
+          .set({
+            metadata: {
+              ...meta,
+              openedAt: nowIso,
+            },
+          })
+          .where(eq(testimonials.id, testimonial.id));
+      } catch (telemetryErr) {
+        console.warn("[TELEMETRY_WARNING] Non-blocking openedAt tracking failed:", telemetryErr);
+      }
     }
 
     return NextResponse.json({
@@ -95,7 +103,8 @@ export async function POST(req: Request) {
     }
 
     const { token, authorName, authorTitle, content, rating } = validation.data;
-    const tokenHash = hashMagicLinkToken(token);
+    const cleanToken = normalizeToken(token);
+    const tokenHash = hashMagicLinkToken(cleanToken);
 
     const [tokenRecord] = await db
       .select()
@@ -136,7 +145,7 @@ export async function POST(req: Request) {
       await tx
         .update(magicLinkTokens)
         .set({ usedAt: new Date() })
-        .where(eq(magicLinkTokens.id, tokenRecord.id));
+        .where(eq(magicLinkTokens.testimonialId, tokenRecord.testimonialId));
 
       return t;
     });

@@ -90,17 +90,24 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1">
+              <label
+                htmlFor="forgot-email"
+                className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1"
+              >
                 Account Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
+                <Mail className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3 pointer-events-none" />
                 <input
+                  id="forgot-email"
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  tabIndex={1}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="creator@domain.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white placeholder:text-surface-white/30"
+                  className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white focus:ring-1 focus:ring-surface-white placeholder:text-surface-white/30 transition"
                   required
                 />
               </div>
@@ -108,8 +115,9 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
+              tabIndex={2}
               disabled={loading}
-              className="w-full py-3.5 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-surface-white focus:ring-offset-2 focus:ring-offset-ink-900"
             >
               {loading ? (
                 <>

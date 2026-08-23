@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,11 @@ export default function SignupPage() {
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Live 4-segment Password Strength Calculation
   const calculateStrength = (pwd: string) => {
@@ -100,7 +105,8 @@ export default function SignupPage() {
         {/* Absolute Corner Back Link */}
         <Link
           href="/"
-          className="absolute top-6 left-6 inline-flex items-center gap-1.5 text-xs text-surface-white/50 hover:text-surface-white transition font-medium"
+          tabIndex={8}
+          className="absolute top-6 left-6 inline-flex items-center gap-1.5 text-xs text-surface-white/50 hover:text-surface-white focus:text-surface-white transition font-medium focus:outline-none"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Home</span>
@@ -108,7 +114,7 @@ export default function SignupPage() {
 
         {/* Centered Logo Anchor */}
         <div className="text-center space-y-3 pt-2">
-          <Link href="/" className="inline-block group" title="Return to Landing Page">
+          <Link href="/" tabIndex={-1} className="inline-block group" title="Return to Landing Page">
             <div className="w-12 h-12 bg-surface-white rounded-2xl flex items-center justify-center mx-auto p-2 shadow-sm transition-transform group-hover:scale-105">
               <Image
                 src="/ClientEcho_logo.png"
@@ -153,7 +159,7 @@ export default function SignupPage() {
               <button
                 onClick={handleResendVerification}
                 disabled={resending}
-                className="w-full py-2.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white border border-surface-white/20 font-mono text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white border border-surface-white/20 font-mono text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {resending ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -174,59 +180,97 @@ export default function SignupPage() {
         ) : (
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1">
+              <label
+                htmlFor="signup-name"
+                className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1"
+              >
                 Full Name
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
+                <User className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3 pointer-events-none" />
                 <input
+                  id="signup-name"
+                  ref={nameInputRef}
                   type="text"
+                  name="name"
+                  autoComplete="name"
+                  tabIndex={1}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !email) {
+                      e.preventDefault();
+                      emailInputRef.current?.focus();
+                    }
+                  }}
                   placeholder="Jane Doe"
-                  className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white placeholder:text-surface-white/30"
+                  className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white focus:ring-1 focus:ring-surface-white placeholder:text-surface-white/30 transition"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1">
+              <label
+                htmlFor="signup-email"
+                className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1"
+              >
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
+                <Mail className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3 pointer-events-none" />
                 <input
+                  id="signup-email"
+                  ref={emailInputRef}
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  tabIndex={2}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !password) {
+                      e.preventDefault();
+                      passwordInputRef.current?.focus();
+                    }
+                  }}
                   placeholder="creator@domain.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white placeholder:text-surface-white/30"
+                  className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white focus:ring-1 focus:ring-surface-white placeholder:text-surface-white/30 transition"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1">
+              <label
+                htmlFor="signup-password"
+                className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1"
+              >
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
+                <Lock className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3 pointer-events-none" />
                 <input
+                  id="signup-password"
+                  ref={passwordInputRef}
                   type={showPassword ? "text" : "password"}
+                  name="password"
+                  autoComplete="new-password"
+                  tabIndex={3}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white placeholder:text-surface-white/30"
+                  className="w-full pl-10 pr-10 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white focus:ring-1 focus:ring-surface-white placeholder:text-surface-white/30 transition"
                   required
                   minLength={8}
                 />
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3 text-surface-white/40 hover:text-surface-white transition"
+                  className="absolute right-3.5 top-3 text-surface-white/40 hover:text-surface-white transition cursor-pointer"
                   title={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -263,19 +307,21 @@ export default function SignupPage() {
 
             <p className="text-[11px] text-surface-white/60 leading-relaxed text-center pt-1">
               By creating an account, you agree to our{" "}
-              <Link href="/terms" className="text-surface-white underline hover:text-surface-white/80">
+              <Link href="/terms" tabIndex={5} className="text-surface-white underline hover:text-surface-white/80 focus:text-surface-white focus:outline-none">
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-surface-white underline hover:text-surface-white/80">
+              <Link href="/privacy" tabIndex={6} className="text-surface-white underline hover:text-surface-white/80 focus:text-surface-white focus:outline-none">
                 Privacy Policy
               </Link>.
             </p>
 
             <button
+              ref={submitButtonRef}
               type="submit"
+              tabIndex={4}
               disabled={loading || password.length < 8}
-              className="w-full py-3.5 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-surface-white focus:ring-offset-2 focus:ring-offset-ink-900"
             >
               {loading ? (
                 <>
@@ -294,7 +340,7 @@ export default function SignupPage() {
 
         <div className="text-center text-xs text-surface-white/60 pt-2 border-t border-surface-white/10">
           Already have an account?{" "}
-          <Link href="/login" className="text-surface-white font-bold hover:underline">
+          <Link href="/login" tabIndex={7} className="text-surface-white font-bold hover:underline focus:underline focus:outline-none">
             Sign In
           </Link>
         </div>

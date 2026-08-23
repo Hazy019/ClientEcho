@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,6 +19,10 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +77,8 @@ function LoginContent() {
         {/* Absolute Corner Back Link */}
         <Link
           href="/"
-          className="absolute top-6 left-6 inline-flex items-center gap-1.5 text-xs text-surface-white/50 hover:text-surface-white transition font-medium"
+          tabIndex={6}
+          className="absolute top-6 left-6 inline-flex items-center gap-1.5 text-xs text-surface-white/50 hover:text-surface-white focus:text-surface-white transition font-medium focus:outline-none"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Home</span>
@@ -81,7 +86,7 @@ function LoginContent() {
 
         {/* Centered Logo Anchor */}
         <div className="text-center space-y-3 pt-2">
-          <Link href="/" className="inline-block group" title="Return to Landing Page">
+          <Link href="/" tabIndex={-1} className="inline-block group" title="Return to Landing Page">
             <div className="w-12 h-12 bg-surface-white rounded-2xl flex items-center justify-center mx-auto p-2 shadow-sm transition-transform group-hover:scale-105">
               <Image
                 src="/ClientEcho_logo.png"
@@ -107,17 +112,31 @@ function LoginContent() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1">
+            <label
+              htmlFor="login-email"
+              className="block text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider mb-1"
+            >
               Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
+              <Mail className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3 pointer-events-none" />
               <input
+                id="login-email"
+                ref={emailInputRef}
                 type="email"
+                name="email"
+                autoComplete="email"
+                tabIndex={1}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !password) {
+                    e.preventDefault();
+                    passwordInputRef.current?.focus();
+                  }
+                }}
                 placeholder="creator@domain.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white placeholder:text-surface-white/30"
+                className="w-full pl-10 pr-4 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white focus:ring-1 focus:ring-surface-white placeholder:text-surface-white/30 transition"
                 required
               />
             </div>
@@ -125,31 +144,42 @@ function LoginContent() {
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider">
+              <label
+                htmlFor="login-password"
+                className="text-xs font-mono font-semibold text-surface-white/70 uppercase tracking-wider"
+              >
                 Password
               </label>
               <Link
                 href="/forgot-password"
-                className="text-[11px] font-mono text-surface-white/70 hover:text-surface-white underline"
+                tabIndex={4}
+                className="text-[11px] font-mono text-surface-white/70 hover:text-surface-white focus:text-surface-white underline focus:outline-none"
               >
                 Forgot password?
               </Link>
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3" />
+              <Lock className="w-4 h-4 text-surface-white/40 absolute left-3.5 top-3 pointer-events-none" />
               <input
+                id="login-password"
+                ref={passwordInputRef}
                 type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete="current-password"
+                tabIndex={2}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white placeholder:text-surface-white/30"
+                className="w-full pl-10 pr-10 py-2.5 bg-ink-900 border border-surface-white/20 rounded-xl text-sm text-surface-white focus:outline-none focus:border-surface-white focus:ring-1 focus:ring-surface-white placeholder:text-surface-white/30 transition"
                 required
               />
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-surface-white/40 hover:text-surface-white transition"
+                className="absolute right-3.5 top-3 text-surface-white/40 hover:text-surface-white transition cursor-pointer"
                 title={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -157,9 +187,11 @@ function LoginContent() {
           </div>
 
           <button
+            ref={submitButtonRef}
             type="submit"
+            tabIndex={3}
             disabled={loading}
-            className="w-full py-3.5 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 bg-surface-white hover:bg-surface-light text-ink-900 font-display font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-surface-white focus:ring-offset-2 focus:ring-offset-ink-900"
           >
             {loading ? (
               <>
@@ -177,7 +209,7 @@ function LoginContent() {
 
         <div className="text-center text-xs text-surface-white/60 pt-2 border-t border-surface-white/10">
           Don't have an account?{" "}
-          <Link href="/signup" className="text-surface-white font-bold hover:underline">
+          <Link href="/signup" tabIndex={5} className="text-surface-white font-bold hover:underline focus:underline focus:outline-none">
             Create Account
           </Link>
         </div>
