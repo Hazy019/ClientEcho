@@ -9,7 +9,7 @@ import { testimonials, magicLinkTokens, widgets, creators } from "@/db/schema";
 import { magicLinkRequestSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "@/lib/security/sanitizer";
 import { generateMagicLinkToken } from "@/lib/tokens/magic-link";
-import { sendMagicLinkApprovalEmail } from "@/lib/email";
+import { sendMagicLinkApprovalEmail, getBaseUrl } from "@/lib/email";
 import { eq, and } from "drizzle-orm";
 
 export async function POST(req: Request) {
@@ -99,6 +99,10 @@ export async function POST(req: Request) {
       return t;
     });
 
+    // Construct approval URL for creator reference and clipboard copy
+    const appUrl = getBaseUrl(req);
+    const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
+
     // Send email with raw token link in a safe try-catch
     let emailResult: { success: boolean; error?: string } = { success: false };
     try {
@@ -108,16 +112,14 @@ export async function POST(req: Request) {
         creatorEmail: user.email || undefined,
         rawToken,
         promptMessage: cleanPrompt,
+        appUrl,
       });
     } catch (emailErr: any) {
       console.error("[MAGIC_LINK_EMAIL_DISPATCH_ERROR]", emailErr);
       emailResult = { success: false, error: emailErr?.message || "Failed to dispatch email" };
     }
 
-    // Construct approval URL for creator reference and clipboard copy
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
-    console.log(`\n=========================================\n[DEV MAGIC LINK GENERATED]\nRecipient: ${data.clientEmail}\nApproval URL: ${approvalUrl}\n=========================================\n`);
+    console.log(`\n=========================================\n[MAGIC LINK GENERATED]\nRecipient: ${data.clientEmail}\nApproval URL: ${approvalUrl}\n=========================================\n`);
 
     return NextResponse.json({
       success: true,

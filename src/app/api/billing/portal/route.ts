@@ -6,13 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { creators } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getBaseUrl } from "@/lib/email";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecret
   ? new Stripe(stripeSecret, { apiVersion: "2025-02-24.acacia" as any })
   : null;
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const supabase = createClient();
     const {
@@ -32,7 +33,7 @@ export async function POST() {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getBaseUrl(req);
 
     if (!stripe || !creator.stripeCustomerId) {
       console.log("[DEV MOCK STRIPE PORTAL] Returning mock portal URL for creator:", user.id);

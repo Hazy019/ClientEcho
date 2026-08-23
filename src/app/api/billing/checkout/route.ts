@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { creators } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getBaseUrl } from "@/lib/email";
 
 import { PRO_PLAN } from "@/lib/config/pricing";
 
@@ -14,7 +15,7 @@ const stripe = stripeSecret
   ? new Stripe(stripeSecret, { apiVersion: "2025-02-24.acacia" as any })
   : null;
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const supabase = createClient();
     const {
@@ -41,7 +42,7 @@ export async function POST() {
         .returning();
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getBaseUrl(req);
 
     if (!stripe) {
       console.log("[DEV MOCK STRIPE CHECKOUT] Simulating Stripe Checkout upgrade for creator:", user.id);

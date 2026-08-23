@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { testimonials, magicLinkTokens } from "@/db/schema";
 import { generateMagicLinkToken } from "@/lib/tokens/magic-link";
-import { sendMagicLinkApprovalEmail } from "@/lib/email";
+import { sendMagicLinkApprovalEmail, getBaseUrl } from "@/lib/email";
 import { eq, and } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -77,6 +77,9 @@ export async function POST(req: Request) {
     const meta = (testimonial.metadata || {}) as Record<string, any>;
     const promptMessage = meta.promptMessage || undefined;
 
+    const appUrl = getBaseUrl(req);
+    const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
+
     // Send email with new token in a safe try-catch
     let emailResult: { success: boolean; error?: string } = { success: false };
     try {
@@ -86,14 +89,12 @@ export async function POST(req: Request) {
         creatorEmail: user.email || undefined,
         rawToken,
         promptMessage,
+        appUrl,
       });
     } catch (emailErr: any) {
       console.error("[RESEND_MAGIC_LINK_EMAIL_DISPATCH_ERROR]", emailErr);
       emailResult = { success: false, error: emailErr?.message || "Failed to dispatch email" };
     }
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
 
     return NextResponse.json({
       success: true,

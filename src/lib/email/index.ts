@@ -27,6 +27,40 @@ function getSmtpTransporter() {
   return null;
 }
 
+export function getBaseUrl(req?: Request): string {
+  // 1. Explicit environment variable configured by user
+  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+
+  // 2. Request context (Headers from incoming HTTP request)
+  if (req) {
+    try {
+      const proto = req.headers.get("x-forwarded-proto") || "https";
+      const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+      if (host && !host.includes("localhost")) {
+        return `${proto}://${host}`.replace(/\/$/, "");
+      }
+    } catch {}
+  }
+
+  // 3. Vercel Production / Deployment URLs
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "");
+  }
+
+  // 4. Fallback default production domain
+  if (process.env.NODE_ENV === "production") {
+    return "https://client-echo-web.vercel.app";
+  }
+
+  // 5. Development localhost fallback
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
 export function getFromAddress(): string {
   const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
   if (gmailUser) {
@@ -138,8 +172,9 @@ export async function sendMagicLinkApprovalEmail(params: {
   replyToEmail?: string;
   rawToken: string;
   promptMessage?: string;
+  appUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = params.appUrl || getBaseUrl();
   const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(params.rawToken)}`;
   const replyTo = params.replyToEmail || params.creatorEmail;
 
@@ -325,8 +360,9 @@ export async function sendSupportEmail(params: {
 export async function sendPasswordResetEmail(params: {
   toEmail: string;
   rawToken: string;
+  appUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = params.appUrl || getBaseUrl();
   const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(params.rawToken)}`;
 
   return sendEmailMessage({
@@ -354,8 +390,9 @@ export async function sendPasswordResetEmail(params: {
 export async function sendEmailVerificationLink(params: {
   toEmail: string;
   rawToken: string;
+  appUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = params.appUrl || getBaseUrl();
   const verifyUrl = `${appUrl}/api/auth/verify-email?token=${encodeURIComponent(params.rawToken)}`;
 
   return sendEmailMessage({
