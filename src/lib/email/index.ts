@@ -56,7 +56,15 @@ async function sendEmailMessage(options: {
   const fromAddress = getFromAddress();
   const transporter = getSmtpTransporter();
 
-  // 1. Send via Gmail SMTP if configured (100% Primary Inbox Delivery)
+  const deliverabilityHeaders = {
+    "Auto-Submitted": "auto-generated",
+    "X-Auto-Response-Suppress": "All",
+    "List-Unsubscribe": `<mailto:${process.env.GMAIL_USER || "ClientEcho.web@gmail.com"}?subject=unsubscribe>`,
+    "X-Mailer": "ClientEcho Verification Engine",
+    ...options.headers,
+  };
+
+  // 1. Send via Gmail SMTP if configured (Primary Inbox Delivery)
   if (transporter) {
     try {
       const sendPromise = transporter.sendMail({
@@ -66,7 +74,7 @@ async function sendEmailMessage(options: {
         text: options.text,
         html: options.html,
         replyTo: options.replyTo,
-        headers: options.headers,
+        headers: deliverabilityHeaders,
       });
 
       const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
@@ -97,7 +105,7 @@ async function sendEmailMessage(options: {
         text: options.text,
         html: options.html,
         replyTo: options.replyTo,
-        headers: options.headers,
+        headers: deliverabilityHeaders,
       });
 
       const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
@@ -138,12 +146,12 @@ export async function sendMagicLinkApprovalEmail(params: {
   const plainText = `
 Hi ${params.toEmail.split("@")[0] || "there"},
 
-${params.creatorName || "Your service provider"} has shared a draft testimonial with you on ClientEcho.
+${params.creatorName || "Your service provider"} has prepared a draft testimonial for you to review and approve on ClientEcho.
 
-${params.promptMessage ? `Message from ${params.creatorName}:\n"${params.promptMessage}"\n\n` : ""}You can review the quote, adjust the rating or wording, or approve it with 1 click:
+${params.promptMessage ? `Note from ${params.creatorName}:\n"${params.promptMessage}"\n\n` : ""}You can review the draft quote, adjust the wording or star rating, and approve it here:
 ${approvalUrl}
 
-No account or password is required.
+This secure review link is unique to your email address and does not require an account.
 Sent via ClientEcho Verification Engine.
 If you did not expect this invitation, you can safely ignore this email.
 `.trim();
@@ -154,9 +162,14 @@ If you did not expect this invitation, you can safely ignore this email.
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Testimonial Review</title>
+      <title>Testimonial Review Request</title>
     </head>
     <body style="margin: 0; padding: 24px 12px; background-color: #f8f8f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2D2D2D;">
+      <!-- Hidden Preheader -->
+      <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+        ${params.creatorName || "Your service provider"} has invited you to review a draft testimonial on ClientEcho.
+      </div>
+
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e7e7e5; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
         <!-- Header -->
         <tr>
@@ -188,7 +201,7 @@ If you did not expect this invitation, you can safely ignore this email.
             }
 
             <p style="font-size: 14px; line-height: 1.5; color: #666666; margin: 0 0 24px 0;">
-              You can edit the wording, adjust the star rating, or approve it with 1 click:
+              You can review the quote, adjust the wording, and approve it in one step:
             </p>
 
             <!-- CTA Button -->
@@ -196,14 +209,14 @@ If you did not expect this invitation, you can safely ignore this email.
               <tr>
                 <td style="background-color: #2D2D2D; border-radius: 12px; text-align: center;">
                   <a href="${approvalUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 12px;">
-                    Review & Approve Testimonial &rarr;
+                    Review &amp; Approve Testimonial &rarr;
                   </a>
                 </td>
               </tr>
             </table>
 
             <p style="font-size: 12px; line-height: 1.6; color: #888888; margin: 0;">
-              Or copy and paste this link in your browser:<br>
+              Or open this direct link in your browser:<br>
               <a href="${approvalUrl}" style="color: #2D2D2D; word-break: break-all; text-decoration: underline;">${approvalUrl}</a>
             </p>
           </td>
@@ -213,7 +226,7 @@ If you did not expect this invitation, you can safely ignore this email.
         <tr>
           <td style="padding: 20px 32px; background-color: #fafaf9; border-top: 1px solid #f0f0ee; text-align: center;">
             <p style="font-size: 12px; color: #888888; line-height: 1.5; margin: 0 0 6px 0;">
-              No password required. Powered by <strong>ClientEcho</strong> public verification.
+              Secure single-use review link. Powered by <strong>ClientEcho</strong> verification.
             </p>
             <p style="font-size: 11px; color: #aaaaaa; margin: 0;">
               Sent to ${params.toEmail}. If you received this by mistake, you can safely ignore it.
