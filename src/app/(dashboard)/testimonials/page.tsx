@@ -89,6 +89,47 @@ interface TestimonialItem {
   updatedAt: string;
 }
 
+function formatTimestampDisplay(dateStr?: string | Date | null) {
+  if (!dateStr) return { full: "Unknown", short: "Unknown", timeOnly: "", relative: "", isRecent: false };
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return { full: "Unknown", short: "Unknown", timeOnly: "", relative: "", isRecent: false };
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.max(0, Math.floor(diffMs / 1000));
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+
+  let relative = "";
+  if (diffSecs < 60) {
+    relative = "Just now";
+  } else if (diffMins < 60) {
+    relative = `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    relative = `${diffHours}h ago`;
+  }
+
+  const timeStr = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const dateStrFormatted = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return {
+    full: `${dateStrFormatted} at ${timeStr}`,
+    short: `${dateStrFormatted} • ${timeStr}`,
+    timeOnly: timeStr,
+    relative,
+    isRecent: diffMins < 15,
+  };
+}
+
 export default function TestimonialsModerationPage() {
   const { showToast } = useToast();
   const { confirm } = useModal();
@@ -165,7 +206,11 @@ export default function TestimonialsModerationPage() {
     fetchInitialData();
   }, []);
 
-  const filteredItems = items.filter((item) => (filter === "all" ? true : item.status === filter));
+  const filteredItems = useMemo(() => {
+    return items
+      .filter((item) => (filter === "all" ? true : item.status === filter))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [items, filter]);
 
   const handleSendMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -648,19 +693,31 @@ export default function TestimonialsModerationPage() {
                 </p>
               )}
 
-              {/* Footer: Last Verified Timestamp + Action Controls */}
+              {/* Footer: Created Timestamp + Action Controls */}
               <div className="flex flex-wrap items-center justify-between gap-4 pt-2 text-xs">
-                <div className="flex items-center gap-1 text-ink-800/50 font-mono text-[11px]">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>
-                    Last Verified:{" "}
-                    {new Date(item.updatedAt || item.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
+                {(() => {
+                  const ts = formatTimestampDisplay(item.createdAt);
+                  return (
+                    <div
+                      className="flex items-center gap-1.5 font-mono text-[11px]"
+                      title={ts.full}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-ink-800/50 shrink-0" />
+                      <span className="text-ink-800/60">
+                        {ts.short}
+                      </span>
+                      {ts.relative && (
+                        <span className={`px-1.5 py-0.5 rounded-full font-semibold ${
+                          ts.isRecent
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-surface-light text-ink-800/50"
+                        }`}>
+                          {ts.relative}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Action Controls */}
                 {item.source === "magic_link" && item.status === "pending" ? (

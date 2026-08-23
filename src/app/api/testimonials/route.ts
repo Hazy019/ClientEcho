@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { testimonials, widgets } from "@/db/schema";
 import { invalidateWidgetCache } from "@/lib/cache/redis";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,8 @@ export async function GET() {
     const creatorTestimonials = await db
       .select()
       .from(testimonials)
-      .where(eq(testimonials.creatorId, user.id));
+      .where(eq(testimonials.creatorId, user.id))
+      .orderBy(desc(testimonials.createdAt));
 
     return NextResponse.json({ testimonials: creatorTestimonials });
   } catch (error) {
