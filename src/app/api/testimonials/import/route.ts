@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
-import { testimonials, widgets } from "@/db/schema";
+import { testimonials, widgets, creators } from "@/db/schema";
 import { manualImportSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "@/lib/security/sanitizer";
 import { eq, and } from "drizzle-orm";
@@ -30,6 +32,23 @@ export async function POST(req: Request) {
     }
 
     const data = validation.data;
+
+    // Ensure creator record exists in creators table to satisfy foreign key constraints
+    const [creatorRecord] = await db
+      .select()
+      .from(creators)
+      .where(eq(creators.id, user.id));
+
+    if (!creatorRecord) {
+      await db
+        .insert(creators)
+        .values({
+          id: user.id,
+          email: user.email || "",
+          name: user.user_metadata?.name || null,
+        })
+        .onConflictDoNothing();
+    }
 
     // Verify creator owns the widget
     const [widget] = await db

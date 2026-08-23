@@ -6,6 +6,7 @@ import { generateMagicLinkToken } from "@/lib/tokens/magic-link";
 import { sendMagicLinkApprovalEmail } from "@/lib/email";
 import { eq, and } from "drizzle-orm";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
