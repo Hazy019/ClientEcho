@@ -1,5 +1,7 @@
 import { Redis } from "@upstash/redis";
 
+let redis: Redis | null = null;
+
 const isMockRedis =
   !process.env.UPSTASH_REDIS_REST_URL ||
   process.env.UPSTASH_REDIS_REST_URL.includes("mock") ||
