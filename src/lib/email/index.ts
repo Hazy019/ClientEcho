@@ -19,6 +19,9 @@ function getSmtpTransporter() {
       tls: {
         rejectUnauthorized: false,
       },
+      connectionTimeout: 5000, // 5s connection timeout to avoid hanging
+      greetingTimeout: 4000,   // 4s greeting timeout
+      socketTimeout: 6000,     // 6s socket timeout
     });
   }
   return null;
@@ -40,6 +43,7 @@ export function getFromAddress(): string {
 /**
  * Universal email dispatcher: routes through Gmail SMTP if configured,
  * otherwise falls back to Resend API.
+ * Uses strict timeouts to guarantee non-blocking execution.
  */
 async function sendEmailMessage(options: {
   to: string;
@@ -55,7 +59,7 @@ async function sendEmailMessage(options: {
   // 1. Send via Gmail SMTP if configured (100% Primary Inbox Delivery)
   if (transporter) {
     try {
-      await transporter.sendMail({
+      const sendPromise = transporter.sendMail({
         from: fromAddress,
         to: options.to,
         subject: options.subject,
@@ -64,6 +68,17 @@ async function sendEmailMessage(options: {
         replyTo: options.replyTo,
         headers: options.headers,
       });
+
+      const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
+        setTimeout(() => resolve({ timeout: true }), 6000)
+      );
+
+      const result = await Promise.race([sendPromise, timeoutPromise]);
+      if (result && "timeout" in result) {
+        logger.error(`[GMAIL_SMTP_TIMEOUT] Timeout while sending email to ${options.to}`);
+        return { success: false, error: "SMTP connection timed out" };
+      }
+
       logger.info(`[GMAIL_SMTP] Email delivered to ${options.to}: [${options.subject}]`);
       return { success: true };
     } catch (err: any) {
@@ -75,7 +90,7 @@ async function sendEmailMessage(options: {
   // 2. Send via Resend API
   if (resend) {
     try {
-      await resend.emails.send({
+      const sendPromise = resend.emails.send({
         from: fromAddress,
         to: options.to,
         subject: options.subject,
@@ -84,6 +99,17 @@ async function sendEmailMessage(options: {
         replyTo: options.replyTo,
         headers: options.headers,
       });
+
+      const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
+        setTimeout(() => resolve({ timeout: true }), 6000)
+      );
+
+      const result = await Promise.race([sendPromise, timeoutPromise]);
+      if (result && "timeout" in result) {
+        logger.error(`[RESEND_TIMEOUT] Timeout while sending email via Resend to ${options.to}`);
+        return { success: false, error: "Resend API request timed out" };
+      }
+
       return { success: true };
     } catch (err: any) {
       const errMsg = err?.message || String(err);

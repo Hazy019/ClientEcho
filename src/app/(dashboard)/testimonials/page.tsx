@@ -139,7 +139,7 @@ export default function TestimonialsModerationPage() {
     setLoadingItems(true);
     try {
       const widgetsRes = await fetch("/api/widgets");
-      const widgetsData = await widgetsRes.json();
+      const widgetsData = await widgetsRes.json().catch(() => ({ widgets: [] }));
       if (widgetsData.widgets) {
         setWidgetsList(widgetsData.widgets);
         if (widgetsData.widgets.length > 0) {
@@ -149,7 +149,7 @@ export default function TestimonialsModerationPage() {
       }
 
       const testimonialsRes = await fetch("/api/testimonials");
-      const testimonialsData = await testimonialsRes.json();
+      const testimonialsData = await testimonialsRes.json().catch(() => ({ testimonials: [] }));
       if (testimonialsData.testimonials) {
         setItems(testimonialsData.testimonials);
       }
@@ -188,11 +188,15 @@ export default function TestimonialsModerationPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({
+        error: `Server responded with HTTP ${res.status}: ${res.statusText || "Unexpected error"}`,
+      }));
+
       if (res.ok && data.success) {
-        if (data.devApprovalUrl) {
+        const linkToCopy = data.approvalUrl || data.devApprovalUrl;
+        if (linkToCopy) {
           try {
-            await navigator.clipboard.writeText(data.devApprovalUrl);
+            await navigator.clipboard.writeText(linkToCopy);
           } catch (_) {}
         }
         if (data.emailSent) {
@@ -214,8 +218,8 @@ export default function TestimonialsModerationPage() {
       } else {
         showToast(data.error || "Failed to send magic link.", "error");
       }
-    } catch {
-      showToast("Network error while sending magic link.", "error");
+    } catch (err: any) {
+      showToast(err?.message || "Network error while sending magic link.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -229,11 +233,14 @@ export default function TestimonialsModerationPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ testimonialId }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({
+        error: `Server responded with HTTP ${res.status}: ${res.statusText || "Unexpected error"}`,
+      }));
       if (res.ok && data.success) {
-        if (data.approvalUrl) {
+        const linkToCopy = data.approvalUrl || data.devApprovalUrl;
+        if (linkToCopy) {
           try {
-            await navigator.clipboard.writeText(data.approvalUrl);
+            await navigator.clipboard.writeText(linkToCopy);
           } catch (_) {}
         }
         if (data.emailSent) {
@@ -247,8 +254,8 @@ export default function TestimonialsModerationPage() {
       } else {
         showToast(data.error || "Failed to resend magic link.", "error");
       }
-    } catch {
-      showToast("Network error while resending link.", "error");
+    } catch (err: any) {
+      showToast(err?.message || "Network error while resending link.", "error");
     } finally {
       setResendingId(null);
     }
@@ -275,7 +282,9 @@ export default function TestimonialsModerationPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({
+        error: `Server responded with HTTP ${res.status}: ${res.statusText || "Unexpected error"}`,
+      }));
       if (res.ok && data.success) {
         showToast("Offline praise successfully imported!", "success");
         setShowImportModal(false);
@@ -286,8 +295,8 @@ export default function TestimonialsModerationPage() {
       } else {
         showToast(data.error || "Import failed.", "error");
       }
-    } catch {
-      showToast("Network error while importing praise.", "error");
+    } catch (err: any) {
+      showToast(err?.message || "Network error while importing praise.", "error");
     } finally {
       setSubmitting(false);
     }

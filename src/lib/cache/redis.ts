@@ -1,9 +1,16 @@
 import { Redis } from "@upstash/redis";
 
-let redis: Redis | null = null;
+const isMockRedis =
+  !process.env.UPSTASH_REDIS_REST_URL ||
+  process.env.UPSTASH_REDIS_REST_URL.includes("mock") ||
+  process.env.NODE_ENV === "test";
 
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-  redis = Redis.fromEnv();
+if (!isMockRedis && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  try {
+    redis = Redis.fromEnv();
+  } catch (err) {
+    console.error("[REDIS_INIT_ERROR] Failed to initialize Upstash Redis client:", err);
+  }
 }
 
 const CACHE_TTL_SECONDS = 60 * 60 * 24; // 24 hours fallback TTL

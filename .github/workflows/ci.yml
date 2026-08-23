@@ -41,5 +41,3 @@ jobs:
           DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
           STRIPE_SECRET_KEY: sk_test_mock
           STRIPE_WEBHOOK_SECRET: whsec_mock
-          UPSTASH_REDIS_REST_URL: https://mock.upstash.io
-          UPSTASH_REDIS_REST_TOKEN: mock-token

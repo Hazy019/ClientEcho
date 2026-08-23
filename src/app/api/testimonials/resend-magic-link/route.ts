@@ -76,14 +76,20 @@ export async function POST(req: Request) {
     const meta = (testimonial.metadata || {}) as Record<string, any>;
     const promptMessage = meta.promptMessage || undefined;
 
-    // Send email with new token
-    const emailResult = await sendMagicLinkApprovalEmail({
-      toEmail: clientEmail,
-      creatorName: user.user_metadata?.name || user.email || "Freelancer",
-      creatorEmail: user.email || undefined,
-      rawToken,
-      promptMessage,
-    });
+    // Send email with new token in a safe try-catch
+    let emailResult: { success: boolean; error?: string } = { success: false };
+    try {
+      emailResult = await sendMagicLinkApprovalEmail({
+        toEmail: clientEmail,
+        creatorName: user.user_metadata?.name || user.email || "Freelancer",
+        creatorEmail: user.email || undefined,
+        rawToken,
+        promptMessage,
+      });
+    } catch (emailErr: any) {
+      console.error("[RESEND_MAGIC_LINK_EMAIL_DISPATCH_ERROR]", emailErr);
+      emailResult = { success: false, error: emailErr?.message || "Failed to dispatch email" };
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
@@ -93,6 +99,7 @@ export async function POST(req: Request) {
       emailSent: emailResult.success,
       emailError: emailResult.error || null,
       approvalUrl,
+      devApprovalUrl: approvalUrl,
     });
   } catch (error: any) {
     console.error("Resend magic link error:", error);
