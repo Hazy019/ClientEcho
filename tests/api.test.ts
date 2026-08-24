@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { publicFormSchema, magicLinkRequestSchema } from "../src/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "../src/lib/security/sanitizer";
 import { validateVideoUrl } from "../src/lib/security/video-url";
 import { generateMagicLinkToken, hashMagicLinkToken, normalizeToken } from "../src/lib/tokens/magic-link";
-import { getFromAddress } from "../src/lib/email";
+import { getFromAddress, getBaseUrl, CANONICAL_APP_URL } from "../src/lib/email";
 
 describe("API Security & Validation Suite", () => {
   describe("1. Zod Input Validation", () => {
@@ -118,6 +118,73 @@ describe("API Security & Validation Suite", () => {
     it("falls back to ClientEcho when no creator name provided", () => {
       const sender = getFromAddress();
       expect(sender).toContain("ClientEcho");
+    });
+  });
+
+  describe("6. Base URL Resolution & Anti-Localhost Guarantees", () => {
+    const originalEnv = { ...process.env };
+
+    beforeEach(() => {
+      delete process.env.NEXT_PUBLIC_APP_URL;
+      delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+      delete process.env.VERCEL_URL;
+      delete process.env.ALLOW_LOCAL_EMAIL_URLS;
+    });
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it("resolves to canonical production URL by default without localhost leakage", () => {
+      const url = getBaseUrl();
+      expect(url).toBe(CANONICAL_APP_URL);
+      expect(url).not.toContain("localhost");
+      expect(url.startsWith("https://")).toBe(true);
+    });
+
+    it("ignores localhost in NEXT_PUBLIC_APP_URL and falls back to production URL", () => {
+      process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+      const url = getBaseUrl();
+      expect(url).toBe(CANONICAL_APP_URL);
+      expect(url).not.toContain("localhost");
+    });
+
+    it("respects valid public production domain in NEXT_PUBLIC_APP_URL", () => {
+      process.env.NEXT_PUBLIC_APP_URL = "https://my-custom-domain.com";
+      const url = getBaseUrl();
+      expect(url).toBe("https://my-custom-domain.com");
+    });
+
+    it("strips trailing slash from configured domain", () => {
+      process.env.NEXT_PUBLIC_APP_URL = "https://client-echo-web.vercel.app/";
+      const url = getBaseUrl();
+      expect(url).toBe("https://client-echo-web.vercel.app");
+    });
+
+    it("ignores localhost in incoming request headers and falls back to production domain", () => {
+      const req = new Request("http://localhost:3000/api/testimonials/magic-link", {
+        headers: { host: "localhost:3000" },
+      });
+      const url = getBaseUrl(req);
+      expect(url).toBe(CANONICAL_APP_URL);
+      expect(url).not.toContain("localhost");
+    });
+
+    it("uses forwarded host header when incoming request is from a public domain", () => {
+      const req = new Request("https://custom.clientecho.com/api/testimonials/magic-link", {
+        headers: {
+          "x-forwarded-proto": "https",
+          "x-forwarded-host": "custom.clientecho.com",
+        },
+      });
+      const url = getBaseUrl(req);
+      expect(url).toBe("https://custom.clientecho.com");
+    });
+
+    it("resolves VERCEL_PROJECT_PRODUCTION_URL when present", () => {
+      process.env.VERCEL_PROJECT_PRODUCTION_URL = "client-echo-web.vercel.app";
+      const url = getBaseUrl();
+      expect(url).toBe("https://client-echo-web.vercel.app");
     });
   });
 });

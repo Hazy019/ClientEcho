@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://clientecho.com";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://client-echo-web.vercel.app";
   const lastModified = new Date();
 
   return [

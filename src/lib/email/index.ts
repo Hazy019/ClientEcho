@@ -27,18 +27,24 @@ function getSmtpTransporter() {
   return null;
 }
 
+export const CANONICAL_APP_URL = "https://client-echo-web.vercel.app";
+
 export function getBaseUrl(req?: Request): string {
-  // 1. Explicit environment variable configured by user
-  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) {
+  // 1. Explicit environment variable configured by user (Production domain)
+  if (
+    process.env.NEXT_PUBLIC_APP_URL &&
+    !process.env.NEXT_PUBLIC_APP_URL.includes("localhost") &&
+    !process.env.NEXT_PUBLIC_APP_URL.includes("127.0.0.1")
+  ) {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
 
-  // 2. Request context (Headers from incoming HTTP request)
+  // 2. Request context (Headers from incoming HTTP request if public domain)
   if (req) {
     try {
       const proto = req.headers.get("x-forwarded-proto") || "https";
       const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-      if (host && !host.includes("localhost")) {
+      if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
         return `${proto}://${host}`.replace(/\/$/, "");
       }
     } catch {}
@@ -52,13 +58,15 @@ export function getBaseUrl(req?: Request): string {
     return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "");
   }
 
-  // 4. Fallback default production domain
-  if (process.env.NODE_ENV === "production") {
-    return "https://client-echo-web.vercel.app";
+  // 4. Opt-in local testing override (only when explicitly requested)
+  if (process.env.ALLOW_LOCAL_EMAIL_URLS === "true") {
+    return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   }
 
-  // 5. Development localhost fallback
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  // 5. Default Canonical Production Domain Fallback
+  // Transactional links (Magic Links, Approval Links, Password Resets) sent to external
+  // clients/users must ALWAYS use a publicly reachable domain rather than localhost.
+  return CANONICAL_APP_URL;
 }
 
 export function getFromAddress(senderName?: string): string {

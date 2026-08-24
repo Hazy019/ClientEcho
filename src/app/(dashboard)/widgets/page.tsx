@@ -639,7 +639,12 @@ export default function WidgetsPage() {
   };
 
   const getEmbedCode = (widgetSlug: string, themeVal?: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://app.clientecho.com";
+    let origin = typeof window !== "undefined" ? window.location.origin : "https://client-echo-web.vercel.app";
+    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      origin = process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")
+        ? process.env.NEXT_PUBLIC_APP_URL
+        : "https://client-echo-web.vercel.app";
+    }
     const selectedTheme = themeVal || defaultTheme;
     return `<script src="${origin}/widget.js" data-widget-slug="${widgetSlug}" data-theme="${selectedTheme}" async></script>`;
   };

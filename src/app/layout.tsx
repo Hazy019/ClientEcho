@@ -33,7 +33,7 @@ const outfit = Outfit({
   display: "swap",
 });
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://clientecho.com";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://client-echo-web.vercel.app";
 
 export const viewport: Viewport = {
   themeColor: "#2D2D2D",
