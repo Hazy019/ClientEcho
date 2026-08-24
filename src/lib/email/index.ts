@@ -6,16 +6,16 @@ const resendApiKey = process.env.RESEND_API_KEY;
 export const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 function getSmtpTransporter() {
-  const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
+  const rawUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+  const rawPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
 
-  if (gmailUser && gmailAppPassword) {
+  if (rawUser && rawPass) {
+    const user = rawUser.replace(/['"]/g, "").trim();
+    const pass = rawPass.replace(/['"]/g, "").replace(/\s+/g, "").trim();
+
     return nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: gmailUser.trim(),
-        pass: gmailAppPassword.replace(/\s+/g, "").trim(),
-      },
+      auth: { user, pass },
       tls: {
         rejectUnauthorized: false,
       },
@@ -70,12 +70,13 @@ export function getBaseUrl(req?: Request): string {
 }
 
 export function getFromAddress(senderName?: string): string {
-  const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+  const rawUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+  const gmailUser = rawUser ? rawUser.replace(/['"]/g, "").trim() : null;
   const displayName = senderName ? `${senderName} via ClientEcho` : "ClientEcho";
   if (gmailUser) {
-    return `${displayName} <${gmailUser.trim()}>`;
+    return `${displayName} <${gmailUser}>`;
   }
-  const envFrom = process.env.EMAIL_FROM || process.env.RESEND_FROM_ADDRESS;
+  const envFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM_ADDRESS || "").replace(/['"]/g, "").trim();
   if (envFrom && !envFrom.includes("@clientecho.com")) {
     return envFrom;
   }
@@ -87,7 +88,7 @@ export function getFromAddress(senderName?: string): string {
  * Universal email dispatcher: routes through Gmail SMTP if configured,
  * otherwise falls back to Resend API.
  * Uses strict timeouts to guarantee non-blocking execution.
- * Configured with authentic 1-to-1 transactional headers for Primary Inbox delivery.
+ * Avoids artificial spammy priority headers to ensure natural Primary Inbox delivery.
  */
 async function sendEmailMessage(options: {
   to: string;
@@ -101,19 +102,6 @@ async function sendEmailMessage(options: {
   const fromAddress = options.from || getFromAddress();
   const transporter = getSmtpTransporter();
 
-  // Generate unique RFC 5322 Message-ID to ensure distinct deliverability tracking
-  const userDomain = (process.env.GMAIL_USER || "mail.clientecho.com").split("@")[1] || "clientecho.com";
-  const uniqueMessageId = `<${Date.now()}.${Math.random().toString(36).substring(2, 11)}@${userDomain}>`;
-
-  // Authentic 1-to-1 transactional headers (No Auto-Submitted or List-Unsubscribe to avoid Promotions/Updates tabs)
-  const deliverabilityHeaders: Record<string, string> = {
-    "Message-ID": uniqueMessageId,
-    "X-Priority": "3",
-    "X-MSMail-Priority": "Normal",
-    "Importance": "Normal",
-    ...options.headers,
-  };
-
   // 1. Send via Gmail SMTP if configured (Primary Inbox Delivery)
   if (transporter) {
     try {
@@ -124,7 +112,7 @@ async function sendEmailMessage(options: {
         text: options.text,
         html: options.html,
         replyTo: options.replyTo,
-        headers: deliverabilityHeaders,
+        headers: options.headers,
       });
 
       const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
@@ -155,7 +143,7 @@ async function sendEmailMessage(options: {
         text: options.text,
         html: options.html,
         replyTo: options.replyTo,
-        headers: deliverabilityHeaders,
+        headers: options.headers,
       });
 
       const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
