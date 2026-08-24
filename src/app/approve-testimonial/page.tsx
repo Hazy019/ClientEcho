@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -75,6 +75,25 @@ function StarRating({
   );
 }
 
+// ─── Shared Layout Shell & Card (Top-Level to prevent React remount on state change) ───
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-full h-screen h-[100dvh] max-h-[100dvh] bg-gradient-to-br from-[#f8f8f6] via-[#f4f4f2] to-[#ececea] flex flex-col items-center justify-center font-sans p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] overflow-hidden">
+      {children}
+    </div>
+  );
+}
+
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`w-full max-w-lg bg-white rounded-[24px] sm:rounded-[28px] shadow-[0_12px_45px_rgba(0,0,0,0.10)] border border-black/[0.06] flex flex-col max-h-[calc(100dvh-2.5rem)] sm:max-h-[85vh] overflow-hidden animate-fade-in-up transition-all ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ApproveTestimonialContent() {
   const searchParams = useSearchParams();
   const rawTokenParam = searchParams.get("token") || "";
@@ -97,6 +116,20 @@ function ApproveTestimonialContent() {
   const [content, setContent] = useState("");
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
+
+  const editContainerRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleEditMode = () => {
+    const nextState = !isEditing;
+    setIsEditing(nextState);
+    if (nextState) {
+      setTimeout(() => {
+        editContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        nameInputRef.current?.focus();
+      }, 50);
+    }
+  };
 
   const verifyToken = () => {
     if (!token) {
@@ -158,21 +191,6 @@ function ApproveTestimonialContent() {
       setSubmitting(false);
     }
   };
-
-  // ─── Shared page shell ───────────────────────────────────────────────────
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div className="w-full h-screen h-[100dvh] max-h-[100dvh] bg-gradient-to-br from-[#f8f8f6] via-[#f4f4f2] to-[#ececea] flex flex-col items-center justify-center font-sans p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] overflow-hidden">
-      {children}
-    </div>
-  );
-
-  const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-    <div
-      className={`w-full max-w-lg bg-white rounded-[24px] sm:rounded-[28px] shadow-[0_12px_45px_rgba(0,0,0,0.10)] border border-black/[0.06] flex flex-col max-h-[calc(100dvh-2.5rem)] sm:max-h-[85vh] overflow-hidden animate-fade-in-up transition-all ${className}`}
-    >
-      {children}
-    </div>
-  );
 
   // ─── Loading ─────────────────────────────────────────────────────────────
   if (loading) {
@@ -388,7 +406,7 @@ function ApproveTestimonialContent() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setIsEditing(!isEditing)}
+                  onClick={toggleEditMode}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 rounded-xl border border-neutral-200/80 transition cursor-pointer active:scale-95"
                 >
                   {isEditing ? (
@@ -400,12 +418,13 @@ function ApproveTestimonialContent() {
               </div>
 
               {isEditing ? (
-                <div className="space-y-3.5 p-5 bg-neutral-50/80 rounded-2xl border border-neutral-200/80 text-left">
+                <div ref={editContainerRef} className="space-y-3.5 p-5 bg-neutral-50/80 rounded-2xl border border-neutral-200/80 text-left">
                   <div>
                     <label className="block text-xs font-bold text-neutral-600 mb-1.5 uppercase tracking-wider font-mono">
                       Your Full Name
                     </label>
                     <input
+                      ref={nameInputRef}
                       type="text"
                       value={authorName}
                       onChange={(e) => setAuthorName(e.target.value)}

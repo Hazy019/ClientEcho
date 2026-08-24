@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { publicFormSchema, magicLinkRequestSchema } from "../src/lib/validation/schemas";
+import { publicFormSchema, magicLinkRequestSchema, magicLinkApproveSchema } from "../src/lib/validation/schemas";
 import { sanitizeHtml, sanitizePlainText } from "../src/lib/security/sanitizer";
 import { validateVideoUrl } from "../src/lib/security/video-url";
 import { generateMagicLinkToken, hashMagicLinkToken, normalizeToken } from "../src/lib/tokens/magic-link";
@@ -33,6 +33,26 @@ describe("API Security & Validation Suite", () => {
         clientEmail: "not-an-email",
         authorName: "Jane Smith",
         content: "Draft testimonial content",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("validates valid magic link testimonial approval payload", () => {
+      const result = magicLinkApproveSchema.safeParse({
+        token: "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+        authorName: "John Doe Edited",
+        authorTitle: "Lead Designer",
+        content: "Working with this team was extraordinary and transformed our client intake.",
+        rating: 5,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects magic link approval with token length under 32 characters", () => {
+      const result = magicLinkApproveSchema.safeParse({
+        token: "short_token",
+        authorName: "John Doe",
+        content: "Approved text",
       });
       expect(result.success).toBe(false);
     });
