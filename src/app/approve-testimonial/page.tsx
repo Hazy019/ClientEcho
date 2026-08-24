@@ -161,14 +161,22 @@ function ApproveTestimonialContent() {
 
   // ─── Shared page shell ───────────────────────────────────────────────────
   const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div className="w-full min-h-screen max-h-screen bg-gradient-to-br from-[#f8f8f6] via-[#f4f4f2] to-[#ececea] flex flex-col items-center justify-center font-sans p-3 sm:p-6 overflow-y-auto custom-scrollbar">
-      {children}
+    <div className="w-full min-h-screen min-h-[100dvh] bg-gradient-to-b from-[#fbfbfa] via-[#f5f5f3] to-[#ebebe8] flex flex-col items-center justify-start sm:justify-center font-sans px-4 py-8 sm:py-12 pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] overflow-y-auto custom-scrollbar">
+      <div className="w-full max-w-lg flex flex-col items-center my-auto">
+        {children}
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-xs font-mono text-neutral-400">
+          <span>Powered by</span>
+          <span className="font-bold text-neutral-600">ClientEcho</span>
+          <span>&bull;</span>
+          <span>Secure Social Proof</span>
+        </div>
+      </div>
     </div>
   );
 
   const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
     <div
-      className={`w-full max-w-lg bg-white rounded-[28px] shadow-[0_12px_50px_rgba(0,0,0,0.12)] border border-black/[0.06] flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-fade-in-up ${className}`}
+      className={`w-full bg-white rounded-[24px] sm:rounded-[28px] shadow-[0_10px_35px_-5px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] border border-black/[0.06] overflow-hidden animate-fade-in-up transition-all ${className}`}
     >
       {children}
     </div>
@@ -178,7 +186,7 @@ function ApproveTestimonialContent() {
   if (loading) {
     return (
       <Shell>
-        <Card className="p-8 space-y-6">
+        <Card className="p-6 sm:p-8 space-y-6">
           <div className="flex items-center gap-3 border-b border-black/5 pb-6">
             <SkeletonBlock className="w-10 h-10 rounded-2xl" />
             <div className="space-y-2 flex-1">
@@ -198,15 +206,20 @@ function ApproveTestimonialContent() {
   if (!validState.valid && validState.reason === "already_approved") {
     return (
       <Shell>
-        <Card className="p-8 sm:p-10 text-center space-y-5">
-          <div className="w-14 h-14 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
-            <CheckCircle className="w-7 h-7 text-white" />
+        <Card className="p-8 sm:p-10 text-center space-y-6">
+          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
+            <CheckCircle className="w-8 h-8 text-emerald-600" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900">Already Confirmed!</h1>
-          <p className="text-neutral-500 text-sm leading-relaxed">
-            This testimonial has already been verified and published. No further action needed.
-          </p>
-          <Link href="/" className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm rounded-2xl transition shadow-sm">
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl font-bold text-neutral-900">Already Confirmed!</h1>
+            <p className="text-neutral-500 text-sm leading-relaxed">
+              This testimonial has already been verified and published. No further action needed.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm rounded-2xl transition shadow-sm"
+          >
             Visit ClientEcho Home
           </Link>
         </Card>
@@ -218,15 +231,20 @@ function ApproveTestimonialContent() {
   if (!validState.valid && validState.reason === "expired") {
     return (
       <Shell>
-        <Card className="p-8 sm:p-10 text-center space-y-5">
-          <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto border border-amber-200">
-            <Clock className="w-7 h-7 text-amber-500" />
+        <Card className="p-8 sm:p-10 text-center space-y-6">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+            <Clock className="w-8 h-8 text-amber-600" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900">Link Expired</h1>
-          <p className="text-neutral-500 text-sm leading-relaxed">
-            This magic approval link has expired for security reasons. Contact your service provider for a fresh link.
-          </p>
-          <Link href="/" className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200">
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl font-bold text-neutral-900">Link Expired</h1>
+            <p className="text-neutral-500 text-sm leading-relaxed">
+              This magic approval link has expired for security reasons. Please contact your service provider for a fresh link.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200"
+          >
             Return to ClientEcho
           </Link>
         </Card>
@@ -240,20 +258,22 @@ function ApproveTestimonialContent() {
 
     return (
       <Shell>
-        <Card className="p-8 sm:p-10 text-center space-y-5">
-          <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center mx-auto border border-rose-200">
-            <AlertCircle className="w-7 h-7 text-rose-500" />
+        <Card className="p-8 sm:p-10 text-center space-y-6">
+          <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+            <AlertCircle className="w-8 h-8 text-rose-600" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900">
-            {isNetworkError ? "Connection Error" : "Invalid Link"}
-          </h1>
-          <p className="text-neutral-500 text-sm leading-relaxed">
-            {isNetworkError
-              ? "We couldn't connect to verify this magic link. Please check your internet connection and try again."
-              : "We couldn't verify this magic link. Please check the URL from your latest invitation email or request a new invite from your creator."}
-          </p>
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl font-bold text-neutral-900">
+              {isNetworkError ? "Connection Error" : "Invalid Link"}
+            </h1>
+            <p className="text-neutral-500 text-sm leading-relaxed">
+              {isNetworkError
+                ? "We couldn't connect to verify this magic link. Please check your internet connection and try again."
+                : "We couldn't verify this magic link. Please check the URL from your invitation email or request a new invite from your creator."}
+            </p>
+          </div>
 
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2.5 pt-2">
             {isNetworkError && (
               <button
                 type="button"
@@ -279,19 +299,24 @@ function ApproveTestimonialContent() {
   if (success) {
     return (
       <Shell>
-        <Card className="p-8 sm:p-10 text-center space-y-5">
+        <Card className="p-8 sm:p-10 text-center space-y-6">
           <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-md">
             <CheckCircle className="w-9 h-9 text-white" />
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-neutral-900">Testimonial Published!</h1>
-          <p className="text-neutral-500 text-sm leading-relaxed">
-            Thank you, <strong className="text-neutral-900">{authorName}</strong>! Your endorsement is now live on the creator's portfolio.
-          </p>
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-neutral-900">Testimonial Published!</h1>
+            <p className="text-neutral-500 text-sm leading-relaxed">
+              Thank you, <strong className="text-neutral-900">{authorName}</strong>! Your endorsement is now live on the creator's portfolio.
+            </p>
+          </div>
           <div className="flex items-center justify-center gap-1.5 text-xs font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 py-2.5 px-4 rounded-xl font-semibold">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Cryptographically Verified & Published</span>
           </div>
-          <Link href="/" className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200">
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200"
+          >
             Learn More About ClientEcho
           </Link>
         </Card>
@@ -303,25 +328,25 @@ function ApproveTestimonialContent() {
   return (
     <Shell>
       <Card>
-        {/* ── Fixed Card Header ── */}
-        <div className="flex-shrink-0 px-6 pt-6 pb-4 text-center border-b border-black/[0.06] space-y-2.5 bg-white z-10">
+        {/* ── Card Header ── */}
+        <div className="px-6 sm:px-8 pt-7 pb-5 text-center border-b border-black/[0.05] bg-gradient-to-b from-neutral-50/50 to-white space-y-3">
           {/* Logo — centered */}
-          <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-[0_2px_12px_rgba(0,0,0,0.10)] border border-black/[0.07] mb-2">
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-[0_2px_12px_rgba(0,0,0,0.08)] border border-black/[0.07] mb-2.5 transition-transform hover:scale-105">
             <Image
               src="/ClientEcho_logo.png"
               alt="ClientEcho"
-              width={28}
-              height={28}
+              width={32}
+              height={32}
               className="w-7 h-7 object-contain"
             />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-neutral-100 border border-neutral-200/80 text-[10px] font-mono uppercase tracking-wider text-neutral-600 font-bold">
-            <Lock className="w-2.5 h-2.5" />
-            Secure 1-Click Verification
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100/90 border border-neutral-200/80 text-[10px] font-mono uppercase tracking-wider text-neutral-600 font-bold">
+            <Lock className="w-2.5 h-2.5 text-neutral-500" />
+            <span>Secure 1-Click Verification</span>
           </div>
 
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight leading-tight">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight leading-snug">
             Confirm Your Testimonial
           </h1>
           <p className="text-neutral-500 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
@@ -329,16 +354,15 @@ function ApproveTestimonialContent() {
           </p>
         </div>
 
-        {/* ── Form container wrapping scrollable body and sticky footer ── */}
-        <form onSubmit={handleSubmitApproval} className="flex-1 flex flex-col min-h-0">
-          {/* ── Scrollable Body with Scoped Custom Scrollbar ── */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 custom-scrollbar">
+        {/* ── Form container with smooth flow ── */}
+        <form onSubmit={handleSubmitApproval} className="flex flex-col">
+          <div className="p-6 sm:p-8 space-y-5">
             {/* ── Personal Note from Creator ── */}
             {validState.testimonial?.promptMessage && (
-              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80 space-y-2">
-                <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-500">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Personal Note from Creator
+              <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200/60 space-y-1.5 text-left">
+                <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-amber-800">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Personal Note from Creator</span>
                 </div>
                 <p className="text-sm text-neutral-700 leading-relaxed italic">
                   "{validState.testimonial.promptMessage}"
@@ -347,7 +371,7 @@ function ApproveTestimonialContent() {
             )}
 
             {/* ── Star Rating ── */}
-            <div className="text-center space-y-2.5 bg-neutral-50 rounded-2xl border border-neutral-200/80 px-5 py-4">
+            <div className="text-center space-y-2.5 bg-neutral-50/80 rounded-2xl border border-neutral-200/70 px-5 py-4">
               <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400">
                 Your Rating — Click a Star to Change
               </div>
@@ -358,7 +382,7 @@ function ApproveTestimonialContent() {
                 onHover={setHoverRating}
                 onLeave={() => setHoverRating(null)}
               />
-              <div className="text-xs font-semibold text-neutral-600">
+              <div className="text-xs font-semibold text-neutral-700">
                 {RATING_LABELS[hoverRating !== null ? hoverRating : rating]}
               </div>
             </div>
@@ -372,7 +396,7 @@ function ApproveTestimonialContent() {
                 <button
                   type="button"
                   onClick={() => setIsEditing(!isEditing)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 rounded-xl border border-neutral-200 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 rounded-xl border border-neutral-200/80 transition cursor-pointer active:scale-95"
                 >
                   {isEditing ? (
                     <><Eye className="w-3.5 h-3.5" /> View Preview</>
@@ -383,9 +407,9 @@ function ApproveTestimonialContent() {
               </div>
 
               {isEditing ? (
-                <div className="space-y-3.5 p-5 bg-neutral-50 rounded-2xl border border-neutral-200/80">
+                <div className="space-y-3.5 p-5 bg-neutral-50/80 rounded-2xl border border-neutral-200/80 text-left">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-neutral-600 mb-1.5 uppercase tracking-wider font-mono">
                       Your Full Name
                     </label>
                     <input
@@ -393,12 +417,12 @@ function ApproveTestimonialContent() {
                       value={authorName}
                       onChange={(e) => setAuthorName(e.target.value)}
                       placeholder="e.g. John Smith"
-                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm font-medium focus:outline-none focus:border-neutral-900 bg-white transition"
+                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm font-medium focus:outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/5 bg-white transition"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-neutral-600 mb-1.5 uppercase tracking-wider font-mono">
                       Title / Company <span className="text-neutral-400 font-normal normal-case">(Optional)</span>
                     </label>
                     <input
@@ -406,12 +430,12 @@ function ApproveTestimonialContent() {
                       value={authorTitle}
                       placeholder="e.g. Founder at Acme Corp"
                       onChange={(e) => setAuthorTitle(e.target.value)}
-                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm font-medium focus:outline-none focus:border-neutral-900 bg-white transition"
+                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm font-medium focus:outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/5 bg-white transition"
                     />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                      <label className="text-xs font-bold text-neutral-600 uppercase tracking-wider font-mono">
                         Testimonial Copy
                       </label>
                       <span className="text-[10px] font-mono text-neutral-400">{content.length} / 2000</span>
@@ -421,17 +445,17 @@ function ApproveTestimonialContent() {
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       placeholder="Write or adjust your testimonial quote..."
-                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-900 bg-white transition leading-relaxed custom-scrollbar"
+                      className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/5 bg-white transition leading-relaxed custom-scrollbar"
                       required
                     />
                   </div>
                 </div>
               ) : (
-                <div className="bg-neutral-50 rounded-2xl border border-neutral-200/80 p-5 sm:p-6 text-center space-y-3">
-                  <p className="text-sm sm:text-base text-neutral-800 italic leading-relaxed">
+                <div className="bg-neutral-50/80 rounded-2xl border border-neutral-200/80 p-5 sm:p-6 text-center space-y-3">
+                  <p className="text-sm sm:text-base text-neutral-800 italic leading-relaxed font-sans">
                     "{content}"
                   </p>
-                  <div className="pt-2 border-t border-neutral-200/80 text-sm font-bold text-neutral-900">
+                  <div className="pt-3 border-t border-neutral-200/70 text-sm font-bold text-neutral-900">
                     — {authorName || "Your Name"}
                     {authorTitle && (
                       <span className="font-normal text-neutral-500 ml-1">({authorTitle})</span>
@@ -441,38 +465,38 @@ function ApproveTestimonialContent() {
               )}
             </div>
 
-            {/* ── Error ── */}
+            {/* ── Error Banner ── */}
             {submitError && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2 text-left">
                 <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
                 <span>{submitError}</span>
               </div>
             )}
-          </div>
 
-          {/* ── Grounded Card Footer with Primary CTA ── */}
-          <div className="flex-shrink-0 px-6 py-4 border-t border-black/[0.06] bg-white space-y-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-10">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 sm:py-4 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-2xl text-sm sm:text-[15px] shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Publishing Testimonial...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>{isEditing ? "Confirm & Publish My Edits" : "Approve & Publish Testimonial"}</span>
-                </>
-              )}
-            </button>
+            {/* ── Submit Action & Trust Signals ── */}
+            <div className="pt-2 space-y-3">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 px-6 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-2xl text-sm sm:text-base shadow-lg shadow-neutral-900/10 transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Publishing Testimonial...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>{isEditing ? "Confirm & Publish My Edits" : "Approve & Publish Testimonial"}</span>
+                  </>
+                )}
+              </button>
 
-            <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-neutral-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-neutral-500" />
-              <span>No password required · Powered by ClientEcho</span>
+              <div className="flex items-center justify-center gap-1.5 text-xs font-mono text-neutral-400">
+                <ShieldCheck className="w-3.5 h-3.5 text-neutral-500" />
+                <span>No password required · Powered by ClientEcho</span>
+              </div>
             </div>
           </div>
         </form>
