@@ -10,6 +10,8 @@ interface BlurTextProps {
   style?: React.CSSProperties;
   animateBy?: "words" | "letters";
   replayKey?: number | string;
+  prefix?: React.ReactNode;
+  suffix?: React.ReactNode;
 }
 
 export default function BlurText({
@@ -19,6 +21,8 @@ export default function BlurText({
   style = {},
   animateBy = "words",
   replayKey,
+  prefix,
+  suffix,
 }: BlurTextProps) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -32,7 +36,9 @@ export default function BlurText({
   if (prefersReducedMotion) {
     return (
       <span className={className} style={style}>
+        {prefix}
         {text}
+        {suffix}
       </span>
     );
   }
@@ -73,6 +79,11 @@ export default function BlurText({
       initial="hidden"
       animate="visible"
     >
+      {prefix && (
+        <motion.span variants={itemVariants} className="inline-block">
+          {prefix}
+        </motion.span>
+      )}
       {elements.map((el, i) => (
         <motion.span
           key={i}
@@ -82,6 +93,11 @@ export default function BlurText({
           {el === " " ? "\u00A0" : el}
         </motion.span>
       ))}
+      {suffix && (
+        <motion.span variants={itemVariants} className="inline-block">
+          {suffix}
+        </motion.span>
+      )}
     </motion.span>
   );
 }

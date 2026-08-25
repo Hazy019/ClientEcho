@@ -54,7 +54,7 @@ export default function RotatingText({
       className={`relative overflow-hidden ${className}`}
       style={{ perspective: "1200px", ...style }}
     >
-      <AnimatePresence mode="wait" custom={direction} initial={false}>
+      <AnimatePresence mode="popLayout" custom={direction} initial={false}>
         <motion.div
           key={itemKey}
           custom={direction}
@@ -63,7 +63,7 @@ export default function RotatingText({
           animate="center"
           exit="exit"
           style={{ transformStyle: "preserve-3d" }}
-          className="w-full"
+          className="w-full h-full flex flex-col"
         >
           {children}
         </motion.div>

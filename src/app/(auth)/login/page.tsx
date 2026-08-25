@@ -44,9 +44,10 @@ function LoginContent() {
         return;
       }
 
-      // Fast direct client-side navigation without redundant profile round-trips
-      router.push(redirectTo);
-      router.refresh();
+      // Intelligent routing: direct admins to /admin and creators to /testimonials
+      const targetDestination =
+        searchParams.get("redirectTo") || data.defaultRoute || "/testimonials";
+      window.location.href = targetDestination;
     } catch (err: any) {
       // Fallback in case fetch network error occurs
       try {
@@ -62,10 +63,14 @@ function LoginContent() {
           return;
         }
 
-        router.push(redirectTo);
-        router.refresh();
+        const isAdmin = email.toLowerCase().trim() === "admin@clientecho.com";
+        const fallbackTarget =
+          searchParams.get("redirectTo") || (isAdmin ? "/admin" : "/testimonials");
+        window.location.href = fallbackTarget;
       } catch (fallbackErr: any) {
-        setErrorMessage("Unable to connect to authentication service. Please check your network connection.");
+        setErrorMessage(
+          "Unable to connect to authentication service. Please check your network connection."
+        );
         setLoading(false);
       }
     }

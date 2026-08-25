@@ -126,7 +126,7 @@ export const magicLinkTokens = pgTable(
 // 5. Admin Audit Log
 export const adminAuditLog = pgTable("admin_audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),
-  adminId: uuid("admin_id").notNull(),
+  adminId: text("admin_id").notNull(),
   action: text("action").notNull(),
   targetType: text("target_type").notNull(),
   targetId: text("target_id"),

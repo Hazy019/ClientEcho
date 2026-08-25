@@ -44,6 +44,7 @@ import UpgradeModal from "@/components/ui/UpgradeModal";
 import CustomSelect from "@/components/ui/CustomSelect";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 import WidgetDisplayClient from "@/app/embed/[slug]/WidgetDisplayClient";
+import Tooltip from "@/components/ui/Tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -248,14 +249,16 @@ function ThemeAwareColorField({
             className="flex-1 min-w-0 px-2 py-1 border border-ink-900/15 rounded-md text-xs font-mono bg-surface-white text-ink-900 focus:outline-none focus:border-ink-900 placeholder:text-ink-800/30"
           />
           {lightVal && (
-            <button
-              type="button"
-              onClick={() => handleLightChange(null)}
-              className="text-[10px] font-mono text-ink-800/40 hover:text-rose-600 px-1 py-0.5 transition cursor-pointer"
-              title="Reset property"
-            >
-              Reset
-            </button>
+            <Tooltip content="Reset property to default">
+              <button
+                type="button"
+                onClick={() => handleLightChange(null)}
+                className="text-[10px] font-mono text-ink-800/40 hover:text-rose-600 px-1 py-0.5 transition cursor-pointer"
+                aria-label="Reset property"
+              >
+                Reset
+              </button>
+            </Tooltip>
           )}
         </div>
       ) : (
@@ -420,6 +423,7 @@ export default function WidgetsPage() {
   const [previewTheme, setPreviewTheme] = useState<"light" | "dark" | "auto">("light");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [replayCount, setReplayCount] = useState(0);
+  const [studioTab, setStudioTab] = useState<"preview" | "embed">("preview");
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedSyncSnippet, setCopiedSyncSnippet] = useState(false);
@@ -808,25 +812,25 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
   ]);
 
   return (
-    <div className="space-y-8 font-sans">
-      <div className="border-b border-ink-900/10 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8 font-sans">
+      <div className="border-b border-ink-900/10 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
-          <h1 className="font-display text-3xl font-bold text-ink-900">Widget Customizer</h1>
-          <p className="text-ink-800/70 text-sm mt-1">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-900 tracking-tight">Widget Customizer</h1>
+          <p className="text-ink-800/80 text-xs sm:text-sm mt-1 leading-relaxed">
             Configure real-time styling, dark/light themes, per-element CSS rules, layout formats, and grab sandboxed embed code.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono px-3 py-1.5 rounded-full bg-surface-white border border-ink-900/10 text-ink-900 font-semibold shadow-xs">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="text-xs font-mono font-bold px-3.5 py-1.5 rounded-full bg-surface-white border border-ink-900/15 text-ink-900 shadow-xs">
             Workspace Limit: {widgets.length} / 3 Active Widgets
           </span>
           <button
             type="button"
             onClick={handleNewWidget}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 text-surface-white hover:bg-ink-800 rounded-full text-xs font-semibold transition shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-ink-900 text-surface-white hover:bg-ink-800 rounded-xl text-xs sm:text-sm font-bold transition shadow-sm active:scale-[0.98] cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>New Widget</span>
           </button>
         </div>
@@ -921,19 +925,21 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                           required
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const freshSlug = generateRandomSlug();
-                          setSlug(freshSlug);
-                          checkSlugAvailability(freshSlug);
-                        }}
-                        title="Generate random unique slug"
-                        className="px-3 py-2.5 bg-surface-light hover:bg-ink-900/5 text-ink-900 border border-ink-900/10 rounded-xl text-xs font-mono font-medium transition flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5 text-ink-800/60" />
-                        <span className="hidden sm:inline">Randomize</span>
-                      </button>
+                      <Tooltip content="Generate random unique slug">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const freshSlug = generateRandomSlug();
+                            setSlug(freshSlug);
+                            checkSlugAvailability(freshSlug);
+                          }}
+                          className="px-3 py-2.5 bg-surface-light hover:bg-ink-900/5 text-ink-900 border border-ink-900/10 rounded-xl text-xs font-mono font-medium transition flex items-center gap-1 cursor-pointer"
+                          aria-label="Generate random unique slug"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-ink-800/60" />
+                          <span className="hidden sm:inline">Randomize</span>
+                        </button>
+                      </Tooltip>
                     </div>
 
                     {slugStatus.message && (
@@ -1029,7 +1035,7 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                     <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
                       Default Embed Theme
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {(["light", "dark", "auto"] as const).map((t) => (
                         <button
                           key={t}
@@ -1038,15 +1044,15 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                             setDefaultTheme(t);
                             setPreviewTheme(t);
                           }}
-                          className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          className={`py-2 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-medium capitalize border transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap ${
                             defaultTheme === t
                               ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
                               : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
                           }`}
                         >
-                          {t === "light" && <Sun className="w-3.5 h-3.5" />}
-                          {t === "dark" && <Moon className="w-3.5 h-3.5" />}
-                          {t === "auto" && <Layers className="w-3.5 h-3.5" />}
+                          {t === "light" && <Sun className="w-3.5 h-3.5 shrink-0" />}
+                          {t === "dark" && <Moon className="w-3.5 h-3.5 shrink-0" />}
+                          {t === "auto" && <Layers className="w-3.5 h-3.5 shrink-0" />}
                           <span>{t === "auto" ? "Auto (OS)" : t}</span>
                         </button>
                       ))}
@@ -1077,8 +1083,8 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                               : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
                           }`}
                         >
-                          <span className="text-xs font-medium">{item.label}</span>
-                          <span className="text-[9px] opacity-70 font-mono">{item.sub}</span>
+                          <span className="text-[11px] sm:text-xs font-medium">{item.label}</span>
+                          <span className="text-[9px] sm:text-[10px] font-mono text-ink-800/50 mt-0.5">{item.sub}</span>
                         </button>
                       ))}
                     </div>
@@ -1101,11 +1107,11 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
 
                   {/* Corner Roundness Slider */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex justify-between items-center mb-1.5">
                       <label className="text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider">
-                        Corner Roundness
+                        Border Radius
                       </label>
-                      <span className="text-xs font-mono font-bold text-ink-900 bg-surface-light px-2 py-0.5 rounded border border-ink-900/10">
+                      <span className="text-xs font-mono font-bold text-ink-900">
                         {borderRadius}px
                       </span>
                     </div>
@@ -1130,13 +1136,13 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                     <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
                       Card Padding Density
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {(["compact", "comfortable", "spacious"] as const).map((d) => (
                         <button
                           key={d}
                           type="button"
                           onClick={() => setPaddingDensity(d)}
-                          className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition cursor-pointer ${
+                          className={`py-2 px-1 sm:px-3 rounded-xl text-[11px] sm:text-xs font-medium capitalize border transition cursor-pointer text-center leading-tight whitespace-nowrap ${
                             paddingDensity === d
                               ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
                               : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
@@ -1153,13 +1159,13 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                     <label className="block text-xs font-mono font-semibold text-ink-800/70 uppercase tracking-wider mb-1.5">
                       Shadow Elevation
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                       {(["none", "subtle", "pronounced"] as const).map((s) => (
                         <button
                           key={s}
                           type="button"
                           onClick={() => setShadowIntensity(s)}
-                          className={`py-2 px-3 rounded-xl text-xs font-medium capitalize border transition cursor-pointer ${
+                          className={`py-2 px-1 sm:px-3 rounded-xl text-[11px] sm:text-xs font-medium capitalize border transition cursor-pointer text-center leading-tight whitespace-nowrap ${
                             shadowIntensity === s
                               ? "border-ink-900 bg-ink-900 text-surface-white font-semibold shadow-sm"
                               : "border-ink-900/10 text-ink-800/70 hover:bg-surface-light"
@@ -1217,8 +1223,11 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                 </div>
               </div>
 
-              {/* Rotator, Spotlight & Stacked Deck specific settings */}
-              {(layoutVariant === "rotator" || layoutVariant === "spotlight" || layoutVariant === "stacked_deck") && (
+              {/* Rotator, Spotlight, Stacked Deck & Orbit Avatars specific settings */}
+              {(layoutVariant === "rotator" ||
+                layoutVariant === "spotlight" ||
+                layoutVariant === "stacked_deck" ||
+                layoutVariant === "orbit_avatars") && (
                 <div className="p-3 bg-surface-light/60 rounded-xl border border-ink-900/10 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-mono font-semibold text-ink-900 flex items-center gap-1">
@@ -1254,7 +1263,7 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                     {[
                       { label: "Slow", speed: 45 },
                       { label: "Medium", speed: 30 },
@@ -1264,7 +1273,7 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
                         key={preset.label}
                         type="button"
                         onClick={() => setMarqueeSpeed(preset.speed)}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-mono font-semibold border transition cursor-pointer ${
+                        className={`py-1.5 px-1 sm:px-2 rounded-lg text-[11px] sm:text-xs font-mono font-semibold border transition cursor-pointer text-center whitespace-nowrap ${
                           marqueeSpeed === preset.speed
                             ? "bg-ink-900 text-surface-white border-ink-900 shadow-xs"
                             : "bg-surface-white border-ink-900/10 text-ink-800/80 hover:bg-surface-light"
@@ -2443,215 +2452,303 @@ window.postMessage({ type: "clientecho-set-theme", theme: "dark" }, "*");`;
           </form>
         </div>
 
-        {/* Live Side-by-Side Preview Pane (Sticky & Smooth Viewport Centered) */}
-        <div className="space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:scrollbar-none">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-base font-bold text-ink-900 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-ink-900" />
-              <span>Live Instant Preview</span>
-            </h2>
+        {/* Live Side-by-Side Preview Pane (Studio Canvas Stage) */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          {/* Studio Navigation Tabs: Live Preview vs Embed Codes */}
+          <div className="flex items-center justify-between bg-surface-white p-1.5 rounded-2xl border border-ink-900/10 shadow-xs">
+            <div className="flex items-center gap-1 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setStudioTab("preview")}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-mono font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  studioTab === "preview"
+                    ? "bg-ink-900 text-surface-white shadow-xs"
+                    : "text-ink-800/70 hover:text-ink-900 hover:bg-surface-light"
+                }`}
+              >
+                <Eye className="w-4 h-4" />
+                <span>Live Interactive Stage</span>
+              </button>
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* Responsive Device Viewport Switcher */}
-              <div className="flex items-center bg-surface-light border border-ink-900/10 p-0.5 rounded-lg text-[10px] font-mono">
-                {[
-                  { id: "desktop", label: "Desktop", icon: Monitor },
-                  { id: "tablet", label: "Tablet", icon: Tablet },
-                  { id: "mobile", label: "Mobile", icon: Smartphone },
-                ].map((d) => {
-                  const Icon = d.icon;
-                  return (
+              <button
+                type="button"
+                onClick={() => setStudioTab("embed")}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-mono font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  studioTab === "embed"
+                    ? "bg-ink-900 text-surface-white shadow-xs"
+                    : "text-ink-800/70 hover:text-ink-900 hover:bg-surface-light"
+                }`}
+              >
+                <Code className="w-4 h-4" />
+                <span>Embed & Setup</span>
+                {widgets.length > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                    studioTab === "embed" ? "bg-surface-white/20 text-surface-white" : "bg-ink-900/10 text-ink-900"
+                  }`}>
+                    {widgets.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {studioTab === "preview" ? (
+            <div className="space-y-4">
+              {/* Studio Stage Header Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-white p-3.5 rounded-2xl border border-ink-900/10 shadow-xs">
+                {/* Responsive Device Viewport Switcher */}
+                <div className="flex items-center bg-surface-light border border-ink-900/10 p-1 rounded-xl text-xs font-mono font-semibold">
+                  {[
+                    { id: "desktop", label: "Desktop", icon: Monitor },
+                    { id: "tablet", label: "Tablet", icon: Tablet },
+                    { id: "mobile", label: "Mobile", icon: Smartphone },
+                  ].map((d) => {
+                    const Icon = d.icon;
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setPreviewDevice(d.id as any)}
+                        className={`px-2.5 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                          previewDevice === d.id
+                            ? "bg-surface-white text-ink-900 font-bold shadow-xs"
+                            : "text-ink-800/70 hover:text-ink-900"
+                        }`}
+                        title={`Preview ${d.label} (simulated width)`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline text-xs">{d.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Replay Animation Trigger Button */}
+                  <Tooltip content="Trigger and replay active layout & text-reveal transitions">
                     <button
-                      key={d.id}
                       type="button"
-                      onClick={() => setPreviewDevice(d.id as any)}
-                      className={`px-1.5 py-1 rounded transition flex items-center gap-1 cursor-pointer ${
-                        previewDevice === d.id
-                          ? "bg-surface-white text-ink-900 font-semibold shadow-2xs"
-                          : "text-ink-800/60 hover:text-ink-900"
-                      }`}
-                      title={`Preview ${d.label} (simulated width)`}
+                      onClick={() => {
+                        setReplayCount((c) => c + 1);
+                        showToast("Replaying animation...", "info");
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-surface-white border border-ink-900/15 hover:bg-surface-light text-ink-900 shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      aria-label="Trigger and replay active layout & text-reveal transitions"
                     >
-                      <Icon className="w-3 h-3" />
-                      <span className="hidden sm:inline text-[9px]">{d.label}</span>
+                      <Play className="w-3.5 h-3.5 text-ink-900 fill-ink-900" />
+                      <span>Replay</span>
                     </button>
-                  );
-                })}
-              </div>
+                  </Tooltip>
 
-              {/* Replay Animation Trigger Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setReplayCount((c) => c + 1);
-                  showToast("Replaying animation...", "info");
-                }}
-                title="Trigger and replay active layout & text-reveal transitions"
-                className="px-2 py-1 rounded-lg text-[10px] font-mono font-semibold bg-surface-white border border-ink-900/15 hover:bg-surface-light text-ink-900 shadow-xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
-              >
-                <Play className="w-3 h-3 text-ink-900 fill-ink-900" />
-                <span className="hidden sm:inline">Replay</span>
-              </button>
-
-              {/* Preview Light / Dark / Auto Mode Toggle with instant sync */}
-              <div className="flex items-center bg-surface-light border border-ink-900/10 p-0.5 rounded-lg">
-                {(["light", "dark", "auto"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setPreviewTheme(mode)}
-                    className={`px-1.5 py-1 rounded text-[10px] font-mono font-semibold transition flex items-center gap-1 cursor-pointer capitalize ${
-                      previewTheme === mode
-                        ? mode === "dark"
-                          ? "bg-ink-900 text-surface-white shadow-xs"
-                          : "bg-surface-white text-ink-900 shadow-xs"
-                        : "text-ink-800/60 hover:text-ink-900"
-                    }`}
-                  >
-                    {mode === "light" && <Sun className="w-3 h-3" />}
-                    {mode === "dark" && <Moon className="w-3 h-3" />}
-                    {mode === "auto" && <Layers className="w-3 h-3" />}
-                    <span>{mode}</span>
-                  </button>
-                ))}
-              </div>
-
-              <span className="text-[9px] font-mono uppercase bg-surface-light border border-ink-800/20 text-ink-800 px-1.5 py-1 rounded font-semibold">
-                {layoutVariant.replace("_", " ")}
-              </span>
-            </div>
-          </div>
-
-          {/* Rendered Live Preview with simulated device frame and seeded samples */}
-          <div
-            className={`p-4 sm:p-6 rounded-2xl border transition-all duration-300 min-h-[340px] flex flex-col justify-center items-center overflow-hidden relative ${
-              previewTheme === "dark"
-                ? "bg-[#121214] border-white/10"
-                : "bg-surface-light/60 border-ink-900/10"
-            }`}
-          >
-            <div
-              className={`w-full mx-auto transition-all duration-300 ${
-                previewDevice === "mobile"
-                  ? "max-w-[340px] px-2 py-4 border border-ink-900/10 rounded-3xl bg-surface-white/5 shadow-lg"
-                  : previewDevice === "tablet"
-                  ? "max-w-[500px] px-2 py-4 border border-ink-900/10 rounded-2xl bg-surface-white/5 shadow-md"
-                  : "max-w-full"
-              }`}
-            >
-              <WidgetDisplayClient
-                widget={previewWidgetConfig}
-                testimonials={sampleTestimonials}
-                initialTheme={previewTheme}
-                replayKey={replayCount}
-              />
-            </div>
-          </div>
-
-          {/* Host Page Live Dark Mode Sync Documentation */}
-          <div className="bg-surface-white p-5 rounded-2xl border border-ink-900/10 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Sun className="w-4 h-4 text-ink-900" />
-                <h3 className="font-display text-xs font-bold text-ink-900 uppercase tracking-wider">
-                  Host Site Dark Mode Sync
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopySyncSnippet}
-                className="text-[11px] font-mono text-ink-900 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                {copiedSyncSnippet ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedSyncSnippet ? "Copied!" : "Copy Snippet"}</span>
-              </button>
-            </div>
-            <p className="text-xs text-ink-800/70 leading-relaxed">
-              If your host site has its own manual theme toggle, trigger this postMessage whenever your theme switches to update the embedded widget live:
-            </p>
-            <pre className="bg-ink-900 text-surface-white p-3 rounded-xl font-mono text-[11px] overflow-x-auto border border-ink-800">
-              {hostSyncSnippet}
-            </pre>
-          </div>
-
-          {/* Active Widgets Embed List */}
-          <div className="space-y-4">
-            <h3 className="font-display text-sm font-bold text-ink-900 flex items-center gap-2">
-              <Code className="w-4 h-4 text-ink-900" />
-              <span>Active Embed Codes</span>
-            </h3>
-
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2].map((i) => (
-                  <div key={i} className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <SkeletonBlock className="w-40 h-5 rounded-md" />
-                        <SkeletonBlock className="w-48 h-3 rounded-md" />
-                      </div>
-                      <SkeletonBlock className="w-24 h-9 rounded-xl" />
-                    </div>
-                    <SkeletonBlock className="w-full h-16 rounded-xl" />
+                  {/* Preview Light / Dark / Auto Mode Toggle */}
+                  <div className="flex items-center bg-surface-light border border-ink-900/10 p-1 rounded-xl text-xs font-mono font-semibold">
+                    {(["light", "dark", "auto"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setPreviewTheme(mode)}
+                        className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 cursor-pointer capitalize ${
+                          previewTheme === mode
+                            ? mode === "dark"
+                              ? "bg-ink-900 text-surface-white font-bold shadow-xs"
+                              : "bg-surface-white text-ink-900 font-bold shadow-xs"
+                            : "text-ink-800/70 hover:text-ink-900"
+                        }`}
+                      >
+                        {mode === "light" && <Sun className="w-3.5 h-3.5" />}
+                        {mode === "dark" && <Moon className="w-3.5 h-3.5" />}
+                        {mode === "auto" && <Layers className="w-3.5 h-3.5" />}
+                        <span>{mode}</span>
+                      </button>
+                    ))}
                   </div>
-                ))}
+
+                  <span className="text-xs font-mono uppercase bg-surface-light border border-ink-800/20 text-ink-900 px-2.5 py-1 rounded-lg font-bold">
+                    {layoutVariant.replace("_", " ")}
+                  </span>
+                </div>
               </div>
-            ) : widgets.length === 0 ? (
-              <div className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 text-center text-xs text-ink-800/60 italic">
-                Save your first widget configuration above to generate embed script tags!
-              </div>
-            ) : (
-              widgets.map((widget) => (
+
+              {/* Rendered Live Preview Stage (Full Natural Height - No clipping!) */}
+              <div
+                className={`p-4 sm:p-6 rounded-2xl border transition-all duration-300 flex flex-col justify-start items-center relative shadow-sm ${
+                  previewTheme === "dark"
+                    ? "bg-[#111215] border-white/10"
+                    : "bg-[#F7F9FB] border-ink-900/10"
+                }`}
+              >
                 <div
-                  key={widget.id}
-                  className={`bg-ink-900 text-surface-white p-5 rounded-2xl shadow-sm space-y-3 border transition ${
-                    editingWidgetId === widget.id ? "border-emerald-500 ring-1 ring-emerald-500" : "border-ink-800"
+                  className={`w-full mx-auto transition-all duration-300 ${
+                    previewDevice === "mobile"
+                      ? "max-w-[360px] p-4 border-4 border-ink-900/20 rounded-[2.5rem] bg-surface-white/10 shadow-xl"
+                      : previewDevice === "tablet"
+                      ? "max-w-[540px] p-4 border-4 border-ink-900/20 rounded-3xl bg-surface-white/10 shadow-lg"
+                      : "max-w-full"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-display font-bold text-surface-white text-sm">
-                          {widget.name}
-                        </h4>
-                        {editingWidgetId === widget.id && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">
-                            Editing
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-surface-white/60 font-mono">
-                        slug: {widget.slug}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => loadWidgetToEdit(widget)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(widget.slug, widget.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-white text-ink-900 hover:bg-surface-light rounded-lg text-xs font-semibold transition cursor-pointer"
-                      >
-                        {copiedId === widget.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedId === widget.id ? "Copied!" : "Copy"}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <pre className="bg-ink-800 p-3 rounded-xl font-mono text-[11px] text-surface-white/90 overflow-x-auto border border-surface-white/10 whitespace-pre-wrap">
-                    {getEmbedCode(widget.slug, widget.themeConfig?.defaultTheme)}
-                  </pre>
+                  <WidgetDisplayClient
+                    widget={previewWidgetConfig}
+                    testimonials={sampleTestimonials}
+                    initialTheme={previewTheme}
+                    replayKey={replayCount}
+                  />
                 </div>
-              ))
-            )}
-          </div>
+              </div>
+
+              {/* Compact 1-Click Embed Snippet Quick Bar */}
+              <div className="bg-surface-white p-4 rounded-2xl border border-ink-900/10 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-mono font-bold text-ink-900 flex items-center gap-1.5">
+                    <Code className="w-3.5 h-3.5 text-ink-900" />
+                    <span>Embed Slug:</span>
+                    <span className="text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-mono text-[11px]">
+                      {slug || "your-slug"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-800/60 mt-0.5">
+                    Drop the 1-line script tag on any HTML site or Webflow / Framer / WordPress.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(slug || "portfolio-default", "quick-copy")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-ink-900 hover:bg-ink-800 text-surface-white rounded-xl text-xs font-bold font-mono transition shadow-xs cursor-pointer active:scale-95"
+                  >
+                    {copiedId === "quick-copy" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedId === "quick-copy" ? "Copied Script!" : "Copy Embed Script"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStudioTab("embed")}
+                    className="px-3 py-2 bg-surface-light hover:bg-ink-900/10 text-ink-900 rounded-xl text-xs font-mono font-semibold transition cursor-pointer"
+                  >
+                    Setup Guide &rarr;
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Host Page Live Dark Mode Sync Documentation */}
+              <div className="bg-surface-white p-4 sm:p-6 rounded-2xl border border-ink-900/10 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sun className="w-4 h-4 text-ink-900 shrink-0" />
+                    <h3 className="font-display text-sm font-bold text-ink-900">
+                      Host Site Dark Mode Sync
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopySyncSnippet}
+                    className="text-xs font-mono font-bold text-ink-900 hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                  >
+                    {copiedSyncSnippet ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedSyncSnippet ? "Copied!" : "Copy Snippet"}</span>
+                  </button>
+                </div>
+                <p className="text-xs text-ink-800/75 leading-relaxed">
+                  If your host site has its own manual theme toggle, trigger this postMessage whenever your theme switches to update the embedded widget live:
+                </p>
+                <pre className="bg-ink-900 text-surface-white p-3.5 rounded-xl font-mono text-[11px] sm:text-xs overflow-x-auto border border-ink-800 break-all sm:break-normal">
+                  {hostSyncSnippet}
+                </pre>
+              </div>
+
+              {/* Active Widgets Embed List */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-base font-bold text-ink-900 flex items-center gap-2">
+                    <Code className="w-4 h-4 text-ink-900" />
+                    <span>Active Embed Codes</span>
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-ink-800/60">
+                    {widgets.length} of 3 Used
+                  </span>
+                </div>
+
+                {loading ? (
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="bg-surface-white p-6 rounded-2xl border border-ink-900/10 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <SkeletonBlock className="w-40 h-5 rounded-md" />
+                            <SkeletonBlock className="w-48 h-3 rounded-md" />
+                          </div>
+                          <SkeletonBlock className="w-24 h-9 rounded-xl" />
+                        </div>
+                        <SkeletonBlock className="w-full h-16 rounded-xl" />
+                      </div>
+                    ))}
+                  </div>
+                ) : widgets.length === 0 ? (
+                  <div className="bg-surface-white p-8 rounded-2xl border border-ink-900/10 text-center text-xs sm:text-sm text-ink-800/70 space-y-2">
+                    <p className="font-bold text-ink-900">No widgets saved yet.</p>
+                    <p className="text-xs text-ink-800/60">
+                      Save your first widget configuration on the left to generate embed script tags!
+                    </p>
+                  </div>
+                ) : (
+                  widgets.map((widget) => (
+                    <div
+                      key={widget.id}
+                      className={`bg-ink-900 text-surface-white p-4 sm:p-5 rounded-2xl shadow-sm space-y-3 border transition ${
+                        editingWidgetId === widget.id ? "border-emerald-500 ring-2 ring-emerald-500/30" : "border-ink-800"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-display font-bold text-surface-white text-sm truncate">
+                              {widget.name}
+                            </h4>
+                            {editingWidgetId === widget.id && (
+                              <span className="text-[10px] font-mono px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full font-bold shrink-0">
+                                Editing Now
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-surface-white/60 font-mono break-all sm:break-normal block">
+                            slug: {widget.slug}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              loadWidgetToEdit(widget);
+                              setStudioTab("preview");
+                            }}
+                            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-surface-white/10 hover:bg-surface-white/20 text-surface-white rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit in Studio</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(widget.slug, widget.id)}
+                            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-surface-white text-ink-900 hover:bg-surface-light rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                          >
+                            {copiedId === widget.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedId === widget.id ? "Copied!" : "Copy Tag"}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <pre className="bg-ink-800 p-3 sm:p-3.5 rounded-xl font-mono text-[11px] sm:text-xs text-surface-white/90 overflow-x-auto border border-surface-white/10 break-all sm:break-normal whitespace-pre-wrap">
+                        {getEmbedCode(widget.slug, widget.themeConfig?.defaultTheme)}
+                      </pre>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

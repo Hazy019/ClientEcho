@@ -16,8 +16,8 @@ const config: Config = {
         "surface-white": "#FFFFFF",
       },
       fontFamily: {
-        display: ["var(--font-syne)", "sans-serif"],
-        sans: ["var(--font-manrope)", "sans-serif"],
+        display: ["var(--font-outfit)", "var(--font-manrope)", "sans-serif"],
+        sans: ["var(--font-manrope)", "var(--font-inter)", "sans-serif"],
       },
     },
   },

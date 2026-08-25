@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 export function createClient() {
   const cookieStore = cookies();
@@ -23,10 +24,25 @@ export function createClient() {
             });
           } catch {
             // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing user sessions.
           }
         },
       },
     }
   );
 }
+
+/**
+ * Per-request memoized authenticated user retrieval.
+ * Deduplicates multiple getUser() calls across layout, pages, and components
+ * within the same HTTP request lifecycle, preventing duplicate 700ms+ network roundtrips.
+ */
+export const getCachedAuthUser = cache(async () => {
+  const supabase = createClient();
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) return null;
+    return data.user;
+  } catch {
+    return null;
+  }
+});

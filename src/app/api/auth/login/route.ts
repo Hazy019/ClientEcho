@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Setup response object to carry session cookies
-    let response = NextResponse.json({ success: true, message: "Logged in successfully" });
+    // 2. Setup cookie storage for Supabase session
+    const cookiesToSetStore: Array<{ name: string; value: string; options?: any }> = [];
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
@@ -53,13 +53,8 @@ export async function POST(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
-              ...options,
-              sameSite: "lax",
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-            });
+          cookiesToSet.forEach((cookie) => {
+            cookiesToSetStore.push(cookie);
           });
         },
       },
@@ -101,6 +96,28 @@ export async function POST(request: NextRequest) {
 
     // 4. Successful login: reset failed attempts
     resetLoginFailures(cleanEmail);
+
+    const isTechAdmin =
+      data.user.app_metadata?.role === "tech_admin" ||
+      cleanEmail === "admin@clientecho.com";
+
+    // 5. Create final JSON response with cookies explicitly attached
+    const response = NextResponse.json({
+      success: true,
+      message: "Logged in successfully",
+      isAdmin: isTechAdmin,
+      defaultRoute: isTechAdmin ? "/admin" : "/testimonials",
+    });
+
+    // Attach all authentication session cookies to the response
+    cookiesToSetStore.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, {
+        ...options,
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      });
+    });
 
     return response;
   } catch (err: any) {

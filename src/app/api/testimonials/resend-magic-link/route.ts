@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { testimonials, magicLinkTokens } from "@/db/schema";
 import { generateMagicLinkToken } from "@/lib/tokens/magic-link";
 import { sendMagicLinkApprovalEmail, getBaseUrl } from "@/lib/email";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { testimonialId } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { testimonialId, sendEmail = true } = body;
     if (!testimonialId) {
       return NextResponse.json({ error: "Testimonial ID is required" }, { status: 400 });
     }
@@ -59,6 +60,12 @@ export async function POST(req: Request) {
     // Generate fresh 32-byte token and expiry
     const { rawToken, tokenHash, expiresAt } = generateMagicLinkToken(72);
 
+    // Expire previous unused tokens for this testimonial to prevent duplicate active tokens
+    await db
+      .update(magicLinkTokens)
+      .set({ expiresAt: new Date() })
+      .where(and(eq(magicLinkTokens.testimonialId, testimonial.id), isNull(magicLinkTokens.usedAt)));
+
     // Insert fresh magic link token for this testimonial
     await db.insert(magicLinkTokens).values({
       testimonialId: testimonial.id,
@@ -73,20 +80,23 @@ export async function POST(req: Request) {
     const appUrl = getBaseUrl(req);
     const approvalUrl = `${appUrl}/approve-testimonial?token=${encodeURIComponent(rawToken)}`;
 
-    // Send email with new token in a safe try-catch
     let emailResult: { success: boolean; error?: string } = { success: false };
-    try {
-      emailResult = await sendMagicLinkApprovalEmail({
-        toEmail: clientEmail,
-        creatorName: user.user_metadata?.name || user.email || "Freelancer",
-        creatorEmail: user.email || undefined,
-        rawToken,
-        promptMessage,
-        appUrl,
-      });
-    } catch (emailErr: any) {
-      console.error("[RESEND_MAGIC_LINK_EMAIL_DISPATCH_ERROR]", emailErr);
-      emailResult = { success: false, error: emailErr?.message || "Failed to dispatch email" };
+
+    if (sendEmail) {
+      // Send email with new token in a safe try-catch
+      try {
+        emailResult = await sendMagicLinkApprovalEmail({
+          toEmail: clientEmail,
+          creatorName: user.user_metadata?.name || user.email || "Freelancer",
+          creatorEmail: user.email || undefined,
+          rawToken,
+          promptMessage,
+          appUrl,
+        });
+      } catch (emailErr: any) {
+        console.error("[RESEND_MAGIC_LINK_EMAIL_DISPATCH_ERROR]", emailErr);
+        emailResult = { success: false, error: emailErr?.message || "Failed to dispatch email" };
+      }
     }
 
     return NextResponse.json({

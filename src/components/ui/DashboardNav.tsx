@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { CheckSquare, LayoutGrid, SlidersHorizontal, BarChart3, Settings, CreditCard, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,16 +49,16 @@ export default function DashboardNav() {
         <Link
           href={href}
           onClick={() => setDrawerOpen(false)}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150 text-sm font-medium ${
+          className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-150 text-base font-semibold ${
             active
-              ? "bg-surface-white text-ink-900 shadow-sm font-semibold"
-              : "text-surface-white/70 hover:bg-surface-white/10 hover:text-surface-white"
+              ? "bg-surface-white text-ink-900 shadow-md font-bold"
+              : "text-surface-white/80 hover:bg-surface-white/10 hover:text-surface-white"
           }`}
         >
-          <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-ink-900" : "text-surface-white/60"}`} />
+          <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-ink-900" : "text-surface-white/70"}`} />
           <span>{label}</span>
           {active && (
-            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-ink-900" />
+            <span className="ml-auto w-2 h-2 rounded-full bg-ink-900" />
           )}
         </Link>
       );
@@ -65,18 +66,14 @@ export default function DashboardNav() {
     return (
       <Link
         href={href}
-        className={`transition-all duration-150 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+        className={`transition-all duration-150 flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold relative ${
           active
-            ? "bg-surface-white/15 text-surface-white font-semibold"
-            : "text-surface-white/60 hover:bg-surface-white/10 hover:text-surface-white"
+            ? "bg-surface-white/20 text-surface-white font-bold shadow-xs border border-surface-white/15"
+            : "text-surface-white/80 hover:bg-surface-white/10 hover:text-surface-white border border-transparent"
         }`}
       >
-        <Icon className="w-3.5 h-3.5" />
-        <span>{label}</span>
-        {/* Active underline bar — visual rhyming with the system's pill/badge aesthetic */}
-        {active && (
-          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-surface-white rounded-full opacity-0" />
-        )}
+        <Icon className={`w-4 h-4 sm:w-[18px] sm:h-[18px] flex-shrink-0 ${active ? "text-surface-white" : "text-surface-white/75"}`} />
+        <span className="tracking-tight">{label}</span>
       </Link>
     );
   };
@@ -84,7 +81,7 @@ export default function DashboardNav() {
   return (
     <>
       {/* ── Desktop Navigation: lg and above ── */}
-      <nav className="hidden lg:flex items-center gap-1 text-xs font-medium text-surface-white/70 relative">
+      <nav className="hidden lg:flex items-center gap-1.5 font-sans relative">
         {navItems.map((item) => (
           <NavLink key={item.href} {...item} />
         ))}
@@ -93,11 +90,11 @@ export default function DashboardNav() {
       {/* ── Mobile Hamburger Button: below lg ── */}
       <button
         onClick={() => setDrawerOpen(true)}
-        className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg text-surface-white/70 hover:text-surface-white hover:bg-surface-white/10 transition-colors"
+        className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl text-surface-white/80 hover:text-surface-white hover:bg-surface-white/10 transition-colors cursor-pointer"
         aria-label="Open navigation menu"
         aria-expanded={drawerOpen}
       >
-        <Menu className="w-5 h-5" />
+        <Menu className="w-6 h-6" />
       </button>
 
       {/* ── Mobile Drawer ── */}
@@ -123,22 +120,29 @@ export default function DashboardNav() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed top-0 left-0 bottom-0 z-[70] w-72 bg-ink-900 border-r border-ink-800 flex flex-col shadow-2xl"
+              className="fixed top-0 left-0 bottom-0 z-[70] w-80 bg-ink-900 border-r border-ink-800 flex flex-col shadow-2xl"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-ink-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-surface-white rounded-lg flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-                      <circle cx="12" cy="12" r="10" stroke="#2D2D2D" strokeWidth="2"/>
-                      <path d="M8 12l2.5 2.5L16 9" stroke="#2D2D2D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+              <div className="flex items-center justify-between px-6 py-5 border-b border-ink-800">
+                <Link
+                  href="/testimonials"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 bg-surface-white rounded-xl flex items-center justify-center p-1.5 shadow-sm group-hover:scale-105 transition-transform">
+                    <Image
+                      src="/ClientEcho_logo.png"
+                      alt="ClientEcho Logo"
+                      width={28}
+                      height={28}
+                      className="w-full h-full object-contain"
+                    />
                   </div>
-                  <span className="font-display font-bold text-base text-surface-white">ClientEcho</span>
-                </div>
+                  <span className="font-display font-bold text-lg text-surface-white">ClientEcho</span>
+                </Link>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-white/50 hover:text-surface-white hover:bg-surface-white/10 transition-colors"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-white/60 hover:text-surface-white hover:bg-surface-white/10 transition-colors cursor-pointer"
                   aria-label="Close navigation menu"
                 >
                   <X className="w-5 h-5" />
@@ -146,8 +150,8 @@ export default function DashboardNav() {
               </div>
 
               {/* Drawer Nav Links */}
-              <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-surface-white/30 px-4 pb-2 pt-1">
+              <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
+                <p className="text-xs font-mono uppercase tracking-widest text-surface-white/40 px-4 pb-2 pt-1 font-bold">
                   Navigation
                 </p>
                 {navItems.map((item) => (
@@ -156,12 +160,12 @@ export default function DashboardNav() {
               </nav>
 
               {/* Drawer Footer */}
-              <div className="p-4 border-t border-ink-800">
-                <div className="px-4 py-2 rounded-xl bg-ink-800 border border-surface-white/8">
-                  <p className="text-[10px] font-mono text-surface-white/40 uppercase tracking-wider mb-0.5">
+              <div className="p-5 border-t border-ink-800">
+                <div className="px-4 py-3 rounded-2xl bg-ink-800 border border-surface-white/10">
+                  <p className="text-[11px] font-mono text-surface-white/50 uppercase tracking-wider mb-0.5 font-bold">
                     Workspace
                   </p>
-                  <p className="text-xs text-surface-white/70 font-medium truncate">
+                  <p className="text-sm text-surface-white font-semibold truncate">
                     Creator Dashboard
                   </p>
                 </div>

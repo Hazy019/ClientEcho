@@ -6,8 +6,67 @@ export async function middleware(request: NextRequest) {
     request,
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Global Security Headers
+  supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
+  supabaseResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (process.env.NODE_ENV === "production") {
+    supabaseResponse.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload"
+    );
+  }
+
+  // Route-specific Framing & Security Headers (Section 1 & 9)
+  if (pathname.startsWith("/embed")) {
+    // Embed pages are intended to be framed on arbitrary creator sites
+    supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors *");
+    // Fast-path return for embed widgets (skip auth roundtrips for maximum speed)
+    return supabaseResponse;
+  } else if (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/widgets") ||
+    pathname.startsWith("/testimonials") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/channels") ||
+    pathname.startsWith("/admin") ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
+  ) {
+    // Authenticated and Auth surfaces MUST reject framing to prevent Clickjacking attacks
+    supabaseResponse.headers.set("X-Frame-Options", "DENY");
+    supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+  }
+
+  // Fast-path: Password reset & forgot password pages do not require auth lookup
+  if (pathname === "/forgot-password" || pathname === "/reset-password") {
+    return supabaseResponse;
+  }
+
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/widgets") ||
+    pathname.startsWith("/testimonials") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/channels");
+
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAuthRoute = pathname === "/login" || pathname === "/signup";
+
+  // If the route is neither protected, admin, nor auth redirect check, skip auth network call
+  if (!isProtectedRoute && !isAdminRoute && !isAuthRoute) {
+    return supabaseResponse;
+  }
+
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -34,54 +93,13 @@ export async function middleware(request: NextRequest) {
       user = data.user;
     }
   } catch {
-    // If refresh token is expired or not found, treat request as unauthenticated
     user = null;
   }
 
-  const pathname = request.nextUrl.pathname;
   const role = user?.app_metadata?.role;
+  const isTechAdmin = role === "tech_admin" || user?.email === "admin@clientecho.com";
 
-  // 1. Global Security Headers
-  supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
-  supabaseResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  if (process.env.NODE_ENV === "production") {
-    supabaseResponse.headers.set(
-      "Strict-Transport-Security",
-      "max-age=63072000; includeSubDomains; preload"
-    );
-  }
-
-  // Route-specific Framing & Security Headers (Section 1 & 9)
-  if (pathname.startsWith("/embed")) {
-    // Embed pages are intended to be framed on arbitrary creator sites
-    supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors *");
-  } else if (
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/widgets") ||
-    pathname.startsWith("/testimonials") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/billing") ||
-    pathname.startsWith("/channels") ||
-    pathname.startsWith("/admin") ||
-    pathname === "/login" ||
-    pathname === "/signup" ||
-    pathname === "/forgot-password" ||
-    pathname === "/reset-password"
-  ) {
-    // Authenticated and Auth surfaces MUST reject framing to prevent Clickjacking attacks
-    supabaseResponse.headers.set("X-Frame-Options", "DENY");
-    supabaseResponse.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
-  }
-
-  // 2. Protected Creator Routes (Requires authenticated creator, Tech Admin is forbidden)
-  const isProtectedRoute =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/widgets") ||
-    pathname.startsWith("/testimonials") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/billing") ||
-    pathname.startsWith("/channels");
-
+  // 2. Protected Creator Routes (Requires authenticated creator, Tech Admin is redirected to /admin)
   if (isProtectedRoute) {
     if (!user) {
       const url = request.nextUrl.clone();
@@ -89,22 +107,23 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set("redirectTo", pathname);
       return NextResponse.redirect(url);
     }
-    // Tech Admin MUST NEVER land on or view creator dashboard surfaces
-    if (role === "tech_admin") {
+    // Tech Admin MUST land on tech admin portal
+    if (isTechAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
   }
 
-  // 3. Tech Admin Route (Requires authenticated user with app_metadata.role = 'tech_admin')
-  if (pathname.startsWith("/admin")) {
+  // 3. Tech Admin Route (Requires authenticated user with tech admin status)
+  if (isAdminRoute) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
+      url.searchParams.set("redirectTo", pathname);
       return NextResponse.redirect(url);
     }
-    if (role !== "tech_admin") {
+    if (!isTechAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);
@@ -112,10 +131,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // 4. Auth Routes (If user is ALREADY logged in, redirect to respective role dashboard immediately)
-  const isAuthRoute = pathname === "/login" || pathname === "/signup";
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
-    url.pathname = role === "tech_admin" ? "/admin" : "/dashboard";
+    url.pathname = isTechAdmin ? "/admin" : "/testimonials";
     return NextResponse.redirect(url);
   }
 

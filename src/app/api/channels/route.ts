@@ -47,15 +47,17 @@ export async function GET() {
       ...(creator.settings || {}),
     };
 
-    // Query real magic_link_tokens joined with testimonials and widgets for creator
+    // Query magic_link_tokens joined with testimonials and widgets for creator
     const rawTokens = await db
       .select({
-        id: magicLinkTokens.id,
+        tokenId: magicLinkTokens.id,
+        testimonialId: magicLinkTokens.testimonialId,
         clientEmail: magicLinkTokens.clientEmail,
         createdAt: magicLinkTokens.createdAt,
         expiresAt: magicLinkTokens.expiresAt,
         usedAt: magicLinkTokens.usedAt,
         authorName: testimonials.authorName,
+        testimonialStatus: testimonials.status,
         widgetName: widgets.name,
       })
       .from(magicLinkTokens)
@@ -63,24 +65,39 @@ export async function GET() {
       .innerJoin(widgets, eq(testimonials.widgetId, widgets.id))
       .where(eq(testimonials.creatorId, user.id))
       .orderBy(desc(magicLinkTokens.createdAt))
-      .limit(50);
+      .limit(100);
 
-    const formattedLog = rawTokens.map((t) => {
-      const now = new Date();
+    // Group by testimonialId so each unique client draft invitation represents 1 entry in the log
+    const testimonialMap = new Map<string, typeof rawTokens>();
+    for (const token of rawTokens) {
+      const existing = testimonialMap.get(token.testimonialId) || [];
+      existing.push(token);
+      testimonialMap.set(token.testimonialId, existing);
+    }
+
+    const now = new Date();
+    const formattedLog = Array.from(testimonialMap.values()).map((tokensList) => {
+      // Tokens are ordered by createdAt desc, so tokensList[0] is the latest attempt
+      const latest = tokensList[0];
+      const isApproved =
+        latest.testimonialStatus === "approved" ||
+        tokensList.some((t) => t.usedAt !== null);
+
       let status: "pending" | "approved" | "expired" = "pending";
-      if (t.usedAt) {
+      if (isApproved) {
         status = "approved";
-      } else if (new Date(t.expiresAt) < now) {
+      } else if (new Date(latest.expiresAt) < now) {
         status = "expired";
       }
 
       return {
-        id: t.id,
-        recipientEmail: t.clientEmail,
-        recipientName: t.authorName || t.clientEmail.split("@")[0],
-        widgetName: t.widgetName,
-        sentAt: t.createdAt.toISOString(),
+        id: latest.testimonialId,
+        recipientEmail: latest.clientEmail,
+        recipientName: latest.authorName || latest.clientEmail.split("@")[0],
+        widgetName: latest.widgetName,
+        sentAt: latest.createdAt.toISOString(),
         status,
+        resendCount: tokensList.length > 1 ? tokensList.length - 1 : undefined,
       };
     });
 
