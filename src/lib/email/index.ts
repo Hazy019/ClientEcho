@@ -1,9 +1,5 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { logger } from "@/lib/logger";
-
-const resendApiKey = process.env.RESEND_API_KEY;
-export const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 function getSmtpTransporter() {
   const rawUser = process.env.GMAIL_USER || process.env.SMTP_USER;
@@ -19,9 +15,9 @@ function getSmtpTransporter() {
       tls: {
         rejectUnauthorized: false,
       },
-      connectionTimeout: 5000, // 5s connection timeout to avoid hanging
-      greetingTimeout: 4000,   // 4s greeting timeout
-      socketTimeout: 6000,     // 6s socket timeout
+      connectionTimeout: 8000, // 8s connection timeout to avoid hanging
+      greetingTimeout: 5000,   // 5s greeting timeout
+      socketTimeout: 8000,     // 8s socket timeout
     });
   }
   return null;
@@ -64,31 +60,19 @@ export function getBaseUrl(req?: Request): string {
   }
 
   // 5. Default Canonical Production Domain Fallback
-  // Transactional links (Magic Links, Approval Links, Password Resets) sent to external
-  // clients/users must ALWAYS use a publicly reachable domain rather than localhost.
   return CANONICAL_APP_URL;
 }
 
 export function getFromAddress(senderName?: string): string {
   const rawUser = process.env.GMAIL_USER || process.env.SMTP_USER;
-  const gmailUser = rawUser ? rawUser.replace(/['"]/g, "").trim() : null;
+  const gmailUser = rawUser ? rawUser.replace(/['"]/g, "").trim() : "ClientEcho.web@gmail.com";
   const displayName = senderName ? `${senderName} via ClientEcho` : "ClientEcho";
-  if (gmailUser) {
-    return `${displayName} <${gmailUser}>`;
-  }
-  const envFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM_ADDRESS || "").replace(/['"]/g, "").trim();
-  if (envFrom && !envFrom.includes("@clientecho.com")) {
-    return envFrom;
-  }
-  // Default to Resend testing domain if no Gmail SMTP is configured
-  return `${displayName} <onboarding@resend.dev>`;
+  return `${displayName} <${gmailUser}>`;
 }
 
 /**
- * Universal email dispatcher: routes through Gmail SMTP if configured,
- * otherwise falls back to Resend API.
+ * Universal email dispatcher: routes through Gmail SMTP with verified credentials.
  * Uses strict timeouts to guarantee non-blocking execution.
- * Avoids artificial spammy priority headers to ensure natural Primary Inbox delivery.
  */
 async function sendEmailMessage(options: {
   to: string;
@@ -102,7 +86,6 @@ async function sendEmailMessage(options: {
   const fromAddress = options.from || getFromAddress();
   const transporter = getSmtpTransporter();
 
-  // 1. Send via Gmail SMTP if configured (Primary Inbox Delivery)
   if (transporter) {
     try {
       const sendPromise = transporter.sendMail({
@@ -112,11 +95,14 @@ async function sendEmailMessage(options: {
         text: options.text,
         html: options.html,
         replyTo: options.replyTo,
-        headers: options.headers,
+        headers: {
+          "X-Auto-Response-Suppress": "OOF, AutoReply",
+          ...options.headers,
+        },
       });
 
       const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
-        setTimeout(() => resolve({ timeout: true }), 6000)
+        setTimeout(() => resolve({ timeout: true }), 8000)
       );
 
       const result = await Promise.race([sendPromise, timeoutPromise]);
@@ -133,38 +119,7 @@ async function sendEmailMessage(options: {
     }
   }
 
-  // 2. Send via Resend API
-  if (resend) {
-    try {
-      const sendPromise = resend.emails.send({
-        from: fromAddress,
-        to: options.to,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
-        replyTo: options.replyTo,
-        headers: options.headers,
-      });
-
-      const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
-        setTimeout(() => resolve({ timeout: true }), 6000)
-      );
-
-      const result = await Promise.race([sendPromise, timeoutPromise]);
-      if (result && "timeout" in result) {
-        logger.error(`[RESEND_TIMEOUT] Timeout while sending email via Resend to ${options.to}`);
-        return { success: false, error: "Resend API request timed out" };
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      logger.error(`Failed to send email via Resend`, err, { recipient: options.to });
-      return { success: false, error: errMsg || "Failed to send email" };
-    }
-  }
-
-  // 3. Local / Dev fallback logger
+  // Local / Dev fallback logger if SMTP credentials not provided
   logger.info(`[DEV / TEST] Email logged for ${options.to}: [${options.subject}]`);
   return { success: true };
 }

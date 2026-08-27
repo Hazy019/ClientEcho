@@ -31,15 +31,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ valid: false, reason: "not_found" }, { status: 404 });
     }
 
-    if (tokenRecord.usedAt) {
-      return NextResponse.json({ valid: false, reason: "already_approved" });
-    }
-
-    if (new Date(tokenRecord.expiresAt) < new Date()) {
-      return NextResponse.json({ valid: false, reason: "expired" });
-    }
-
-    // Fetch associated draft testimonial
+    // Fetch associated testimonial
     const [testimonial] = await db
       .select()
       .from(testimonials)
@@ -49,8 +41,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ valid: false, reason: "testimonial_not_found" }, { status: 404 });
     }
 
-    if (testimonial.status === "approved") {
-      return NextResponse.json({ valid: false, reason: "already_approved" });
+    if (tokenRecord.usedAt || testimonial.status === "approved") {
+      return NextResponse.json({
+        valid: false,
+        reason: "already_approved",
+        testimonial: {
+          id: testimonial.id,
+          authorName: testimonial.authorName,
+          authorTitle: testimonial.authorTitle,
+          content: testimonial.content,
+          rating: testimonial.rating,
+        },
+      });
+    }
+
+    if (new Date(tokenRecord.expiresAt) < new Date()) {
+      return NextResponse.json({
+        valid: false,
+        reason: "expired",
+        testimonial: {
+          id: testimonial.id,
+          authorName: testimonial.authorName,
+        },
+      });
     }
 
     // Non-blocking telemetry: Record openedAt timestamp in testimonial metadata if first time viewing
@@ -186,7 +199,11 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, message: "Testimonial approved successfully!" });
+    return NextResponse.json({
+      success: true,
+      testimonialId: updatedTestimonial.id,
+      message: "Testimonial approved successfully!",
+    });
 
   } catch (error) {
     console.error("Token approval error:", error);

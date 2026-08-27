@@ -350,7 +350,15 @@ export default function TestimonialsModerationPage() {
       }));
 
       if (res.ok && data.success) {
-        const linkToCopy = data.approvalUrl || data.devApprovalUrl;
+        let linkToCopy = data.approvalUrl || data.devApprovalUrl;
+        if (linkToCopy && typeof window !== "undefined") {
+          try {
+            const parsed = new URL(linkToCopy);
+            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+              linkToCopy = `${window.location.origin}${parsed.pathname}${parsed.search}`;
+            }
+          } catch (_) {}
+        }
         if (linkToCopy) {
           try {
             await navigator.clipboard.writeText(linkToCopy);
@@ -394,7 +402,16 @@ export default function TestimonialsModerationPage() {
         error: `Server responded with HTTP ${res.status}: ${res.statusText || "Unexpected error"}`,
       }));
       if (res.ok && data.success && data.approvalUrl) {
-        await navigator.clipboard.writeText(data.approvalUrl);
+        let linkToCopy = data.approvalUrl;
+        if (typeof window !== "undefined") {
+          try {
+            const parsed = new URL(linkToCopy);
+            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+              linkToCopy = `${window.location.origin}${parsed.pathname}${parsed.search}`;
+            }
+          } catch (_) {}
+        }
+        await navigator.clipboard.writeText(linkToCopy);
         setCopiedMagicLinkId(testimonialId);
         showToast("Magic approval link copied to clipboard!", "success");
         setTimeout(() => setCopiedMagicLinkId(null), 2500);

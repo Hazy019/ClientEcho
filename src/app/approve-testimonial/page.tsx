@@ -214,24 +214,62 @@ function ApproveTestimonialContent() {
 
   // ─── Already approved ────────────────────────────────────────────────────
   if (!validState.valid && validState.reason === "already_approved") {
+    const t = validState.testimonial;
     return (
       <Shell>
-        <Card className="p-8 sm:p-10 text-center space-y-6">
-          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
-            <CheckCircle className="w-8 h-8 text-emerald-600" />
+        <Card className="p-7 sm:p-9 text-center space-y-5">
+          <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20 shadow-xs">
+            <CheckCircle className="w-7 h-7 text-emerald-600" />
           </div>
-          <div className="space-y-2">
-            <h1 className="font-display text-2xl font-bold text-neutral-900">Already Confirmed!</h1>
-            <p className="text-neutral-500 text-sm leading-relaxed">
-              This testimonial has already been verified and published. No further action needed.
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[10px] font-mono uppercase tracking-wider text-emerald-800 font-bold">
+              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+              <span>Published & Cryptographically Signed</span>
+            </div>
+            <h1 className="font-display text-xl sm:text-2xl font-bold text-neutral-900">
+              Already Confirmed!
+            </h1>
+            <p className="text-neutral-500 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
+              This testimonial has already been verified and published to the creator's live portfolio.
             </p>
           </div>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm rounded-2xl transition shadow-sm"
-          >
-            Visit ClientEcho Home
-          </Link>
+
+          {t && t.content && (
+            <div className="bg-neutral-50/90 rounded-2xl border border-neutral-200/80 p-4 text-left space-y-2">
+              <div className="flex items-center gap-1">
+                {Array.from({ length: t.rating || 5 }).map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-neutral-700 italic leading-relaxed">
+                "{t.content}"
+              </p>
+              <div className="text-xs font-bold text-neutral-900 pt-1 border-t border-neutral-200/60">
+                — {t.authorName || "Verified Client"}
+                {t.authorTitle && (
+                  <span className="font-normal text-neutral-500 ml-1">({t.authorTitle})</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2.5 pt-1">
+            {t?.id && (
+              <Link
+                href={`/verify/${t.id}`}
+                className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm rounded-2xl transition shadow-sm"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>View Verification Certificate</span>
+              </Link>
+            )}
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 w-full py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-xs sm:text-sm rounded-2xl transition border border-neutral-200"
+            >
+              Visit ClientEcho Home
+            </Link>
+          </div>
         </Card>
       </Shell>
     );
@@ -248,7 +286,7 @@ function ApproveTestimonialContent() {
           <div className="space-y-2">
             <h1 className="font-display text-2xl font-bold text-neutral-900">Link Expired</h1>
             <p className="text-neutral-500 text-sm leading-relaxed">
-              This magic approval link has expired for security reasons. Please contact your service provider for a fresh link.
+              This magic approval link has expired for security reasons (72-hour validity). Please contact your creator or service provider to generate a fresh link.
             </p>
           </div>
           <Link
@@ -279,7 +317,7 @@ function ApproveTestimonialContent() {
             <p className="text-neutral-500 text-sm leading-relaxed">
               {isNetworkError
                 ? "We couldn't connect to verify this magic link. Please check your internet connection and try again."
-                : "We couldn't verify this magic link. Please check the URL from your invitation email or request a new invite from your creator."}
+                : "We couldn't verify this magic link token. Please check that the entire link was copied properly from your invitation or request a new invite."}
             </p>
           </div>
 
@@ -307,6 +345,7 @@ function ApproveTestimonialContent() {
 
   // ─── Success ─────────────────────────────────────────────────────────────
   if (success) {
+    const publishedId = validState.testimonial?.id;
     return (
       <Shell>
         <Card className="p-8 sm:p-10 text-center space-y-6">
@@ -323,12 +362,23 @@ function ApproveTestimonialContent() {
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Cryptographically Verified & Published</span>
           </div>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200"
-          >
-            Learn More About ClientEcho
-          </Link>
+          <div className="space-y-2.5 pt-2">
+            {publishedId && (
+              <Link
+                href={`/verify/${publishedId}`}
+                className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold text-sm rounded-2xl transition shadow-sm"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>View Live Verification Certificate</span>
+              </Link>
+            )}
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-2 w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-2xl transition border border-neutral-200"
+            >
+              Learn More About ClientEcho
+            </Link>
+          </div>
         </Card>
       </Shell>
     );
